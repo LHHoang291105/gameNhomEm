@@ -58,10 +58,9 @@ class Player extends SpriteAnimationComponent
         height = width;
     }
     
-    // Adjusted scale factor. 
-    // Since the base image is very large (1024px), we need a smaller scale to fit the screen.
-    // Previous effective size was ~130px. 1024 * 0.15 ~= 153px.
-    size = Vector2(width, height) * 0.15;
+    // Adjusted scale factor to reduce size (half of previous 0.1)
+    // Now it is 0.05 (resulting in ~51px)
+    size = Vector2(width, height) * 0.05;
 
     add(RectangleHitbox.relative(
       Vector2(0.6, 0.9),

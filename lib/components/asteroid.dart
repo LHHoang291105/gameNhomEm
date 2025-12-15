@@ -10,13 +10,13 @@ import 'package:flutter/widgets.dart';
 
 class Asteroid extends SpriteComponent with HasGameReference<MyGame> {
   final Random _random = Random();
-  static const double _maxSize = 120; // Increased size back to 120
+  static const double _maxSize = 120;
   late Vector2 _velocity;
   final Vector2 _originalVelocity = Vector2.zero();
   late double _spinSpeed;
-  final double _maxHealth = 2; // Health set to 2
   late double _health;
   bool _isKnockedback = false;
+  late int _asteroidType;
 
   Asteroid({required super.position, double size = _maxSize})
       : super(
@@ -27,19 +27,22 @@ class Asteroid extends SpriteComponent with HasGameReference<MyGame> {
     _velocity = _generateVelocity();
     _originalVelocity.setFrom(_velocity);
     _spinSpeed = _random.nextDouble() * 1.5 - 0.75;
-    
-    // Set health. Since we want exactly 2 hits for the main asteroids, and they spawn at max size:
-    _health = size / _maxSize * _maxHealth;
-    // If we want ALL asteroids (even smaller ones if any exist) to have 2 health, we could just say _health = 2; 
-    // But currently only max size asteroids spawn from spawner.
+
+    // Determine asteroid type (1, 2, or 3)
+    _asteroidType = _random.nextInt(3) + 1;
+
+    // Set base health based on type: Asteroid 1 has 3 health, others have 2
+    double baseHealth = (_asteroidType == 1) ? 3.0 : 2.0;
+
+    // Scale health by size (usually size is max so it equals baseHealth)
+    _health = size / _maxSize * baseHealth;
 
     add(CircleHitbox(collisionType: CollisionType.passive));
   }
 
   @override
   FutureOr<void> onLoad() async {
-    final int imageNum = _random.nextInt(3) + 1;
-    sprite = await game.loadSprite('asteroid$imageNum.png');
+    sprite = await game.loadSprite('asteroid$_asteroidType.png');
 
     return super.onLoad();
   }
@@ -97,6 +100,11 @@ class Asteroid extends SpriteComponent with HasGameReference<MyGame> {
     }
   }
 
+  void selfDestruct() {
+    removeFromParent();
+    _createExplosion();
+  }
+
   void _flashWhite() {
     final ColorEffect flashEffect = ColorEffect(
       const Color.fromRGBO(255, 255, 255, 1.0),
@@ -140,19 +148,4 @@ class Asteroid extends SpriteComponent with HasGameReference<MyGame> {
     );
     game.add(explosion);
   }
-
-  // Split functionality removed/commented out as requested
-  /*
-  void _splitAsteroid() {
-    if (size.x <= _maxSize / 3) return;
-
-    for (int i = 0; i < 3; i++) {
-      final Asteroid fragment = Asteroid(
-        position: position.clone(),
-        size: size.x - _maxSize / 3,
-      );
-      game.add(fragment);
-    }
-  }
-  */
 }

@@ -22,11 +22,20 @@ class MyGame extends FlameGame
   late SpawnComponent _pickupSpawner;
   final Random _random = Random();
   late ShootButton _shootButton;
+  
+  // Distance tracking
+  double _distanceTraveled = 0.0;
+  final double _targetDistance = 1000.0; // 1000km
+  // Adjusted speed: 1000km in 60 seconds => 16.67 km/s
+  final double _speedKmPerSecond = 1000.0 / 60.0; 
+  late TextComponent _distanceDisplay;
+
   int _score = 0;
   late TextComponent _scoreDisplay;
   final List<String> playerColors = ['red', 'blue'];
   int playerColorIndex = 0;
   late final AudioManager audioManager;
+  bool _levelTransitioning = false;
 
   @override
   FutureOr<void> onLoad() async {
@@ -43,13 +52,37 @@ class MyGame extends FlameGame
     return super.onLoad();
   }
 
+  @override
+  void update(double dt) {
+    super.update(dt);
+    
+    // Only increase distance if game is playing (player exists) and not yet transitioning
+    if (children.whereType<Player>().isNotEmpty && !_levelTransitioning) {
+      _distanceTraveled += _speedKmPerSecond * dt;
+      
+      // Update display text
+      _distanceDisplay.text = '${_distanceTraveled.toInt()} km';
+      
+      // Check for level transition condition (Distance >= 1000km)
+      if (_distanceTraveled >= _targetDistance) {
+        _distanceTraveled = _targetDistance; // Cap it at target
+        _distanceDisplay.text = '${_targetDistance.toInt()} km';
+        _startLevelTransition();
+      }
+    }
+  }
+
   void startGame() async {
+    _levelTransitioning = false;
+    _distanceTraveled = 0.0; // Reset distance
+    
     await _createJoystick();
     await _createPlayer();
     _createShootButton();
     _createAsteroidSpawner();
     _createPickupSpawner();
     _createScoreDisplay();
+    _createDistanceDisplay();
   }
 
   Future<void> _createPlayer() async {
@@ -121,7 +154,7 @@ class MyGame extends FlameGame
     _scoreDisplay = TextComponent(
       text: '0',
       anchor: Anchor.topCenter,
-      position: Vector2(size.x / 2, 20),
+      position: Vector2(size.x / 2, 20), // Top Center
       priority: 10,
       textRenderer: TextPaint(
         style: const TextStyle(
@@ -141,8 +174,35 @@ class MyGame extends FlameGame
 
     add(_scoreDisplay);
   }
+  
+  void _createDistanceDisplay() {
+    _distanceDisplay = TextComponent(
+      text: '0 km',
+      anchor: Anchor.topLeft,
+      position: Vector2(20, 20), // Top Left
+      priority: 10,
+      textRenderer: TextPaint(
+        style: const TextStyle(
+          color: Colors.cyanAccent,
+          fontSize: 24,
+          fontWeight: FontWeight.bold,
+          shadows: [
+            Shadow(
+              color: Colors.black,
+              offset: Offset(2, 2),
+              blurRadius: 2,
+            ),
+          ],
+        ),
+      ),
+    );
+    add(_distanceDisplay);
+  }
 
   void incrementScore(int amount) {
+    // Score is kept for tracking kills/pickups but no longer triggers level transition
+    if (_levelTransitioning) return;
+
     _score += amount;
     _scoreDisplay.text = _score.toString();
 
@@ -158,6 +218,22 @@ class MyGame extends FlameGame
     _scoreDisplay.add(popEffect);
   }
 
+  void _startLevelTransition() {
+    if (_levelTransitioning) return;
+    _levelTransitioning = true;
+
+    // Stop spawners
+    _asteroidSpawner.timer.stop();
+    _pickupSpawner.timer.stop();
+
+    // Destroy all existing asteroids
+    children.whereType<Asteroid>().forEach((asteroid) {
+      asteroid.selfDestruct();
+    });
+    
+    // Logic for completing level (reaching 1000km)
+  }
+
   void _createStars() {
     for (int i = 0; i < 50; i++) {
       add(Star()..priority = -10);
@@ -170,6 +246,9 @@ class MyGame extends FlameGame
   }
 
   void restartGame() {
+    _levelTransitioning = false;
+    _distanceTraveled = 0.0;
+
     // remove any asteroids and pickups that are currently in the game
     children.whereType<PositionComponent>().forEach((component) {
       if (component is Asteroid || component is Pickup) {
@@ -184,6 +263,7 @@ class MyGame extends FlameGame
     // reset the score to 0
     _score = 0;
     _scoreDisplay.text = '0';
+    _distanceDisplay.text = '0 km';
 
     // create a new player sprite
     _createPlayer();
@@ -192,6 +272,9 @@ class MyGame extends FlameGame
   }
 
   void quitGame() {
+    _levelTransitioning = false;
+    _distanceTraveled = 0.0;
+    
     // remove everything from the game except the stars
     children.whereType<PositionComponent>().forEach((component) {
       if (component is! Star) {
@@ -201,6 +284,10 @@ class MyGame extends FlameGame
 
     remove(_asteroidSpawner);
     remove(_pickupSpawner);
+    
+    // Also remove score and distance displays
+    if (contains(_scoreDisplay)) remove(_scoreDisplay);
+    if (contains(_distanceDisplay)) remove(_distanceDisplay);
 
     // show the title overlay
     overlays.add('Title');
