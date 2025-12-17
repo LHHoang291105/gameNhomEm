@@ -76,11 +76,11 @@ class _TitleOverlayState extends State<TitleOverlay> {
                   padding: const EdgeInsets.only(left: 30, right: 30, top: 30),
                   child: SizedBox(
                     width: 100,
-                    height: 100, // Force height to be equal to width (Square)
+                    height: 100, // Keep square aspect ratio
                     child: Image.asset(
                       'assets/images/player_${playerColor}_off.png',
                       gaplessPlayback: true,
-                      fit: BoxFit.fill, // Ensure the image fills the square 100x100 box
+                      fit: BoxFit.fill,
                     ),
                   ),
                 ),

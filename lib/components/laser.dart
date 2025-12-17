@@ -2,26 +2,27 @@ import 'dart:async';
 import 'dart:math';
 
 import 'package:cosmic_havoc/components/asteroid.dart';
+import 'package:cosmic_havoc/components/monster.dart';
 import 'package:cosmic_havoc/my_game.dart';
 import 'package:flame/collisions.dart';
 import 'package:flame/components.dart';
 
-class Laser extends SpriteComponent
-    with HasGameReference<MyGame>, CollisionCallbacks {
-  Laser({required super.position, super.angle = 0.0})
-      : super(
+class Laser extends SpriteComponent with HasGameReference<MyGame>, CollisionCallbacks {
+  final double _speed = 800;
+
+  Laser({
+    required super.position,
+    super.angle,
+  }) : super(
+          size: Vector2(10, 30),
           anchor: Anchor.center,
-          priority: -1,
+          priority: 5, // Tăng priority để hiện lên trên background và quái
         );
 
   @override
   FutureOr<void> onLoad() async {
     sprite = await game.loadSprite('laser.png');
-
-    size *= 0.25;
-
     add(RectangleHitbox());
-
     return super.onLoad();
   }
 
@@ -29,21 +30,28 @@ class Laser extends SpriteComponent
   void update(double dt) {
     super.update(dt);
 
-    position += Vector2(sin(angle), -cos(angle)) * 500 * dt;
+    // Di chuyển theo hướng góc quay
+    position.y -= _speed * dt * (cos(angle));
+    position.x += _speed * dt * (sin(angle));
 
-    // remove the laser from the game if it goes above the top
-    if (position.y < -size.y / 2) {
+    if (position.y < -size.y || position.x < 0 || position.x > game.size.x) {
       removeFromParent();
     }
   }
 
   @override
-  void onCollision(Set<Vector2> intersectionPoints, PositionComponent other) {
-    super.onCollision(intersectionPoints, other);
+  void onCollisionStart(
+    Set<Vector2> intersectionPoints,
+    PositionComponent other,
+  ) {
+    super.onCollisionStart(intersectionPoints, other);
 
     if (other is Asteroid) {
-      removeFromParent();
       other.takeDamage();
+      removeFromParent();
+    } else if (other is Monster) {
+      other.takeDamage();
+      removeFromParent();
     }
   }
 }

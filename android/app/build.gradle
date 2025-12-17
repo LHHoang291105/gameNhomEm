@@ -36,6 +36,17 @@ android {
             // Signing with the debug keys for now, so `flutter run --release` works.
             signingConfig = signingConfigs.debug
         }
+        debug {
+            // Reduce image quality/density to save memory during debug builds
+            aaptOptions {
+                cruncherEnabled = false
+            }
+        }
+    }
+    
+    // Additional memory optimization
+    dexOptions {
+        javaMaxHeapSize "4g"
     }
 }
 
