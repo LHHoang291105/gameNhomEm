@@ -41,7 +41,7 @@ class _TitleOverlayState extends State<TitleOverlay> {
       opacity: _opacity,
       duration: const Duration(milliseconds: 500),
       child: Container(
-        alignment: Alignment.center,
+        alignment: Alignment.topCenter,
         child: Column(
           children: [
             const SizedBox(height: 60),

@@ -1,48 +1,47 @@
 import 'dart:async';
 import 'dart:math';
 
-import 'package:flame/components.dart';
 import 'package:cosmic_havoc/my_game.dart';
+import 'package:flame/collisions.dart';
+import 'package:flame/components.dart';
+import 'package:flame/effects.dart';
 
 class Bubble extends SpriteComponent with HasGameReference<MyGame> {
   final Random _random = Random();
-  late double _speed;
 
-  Bubble() : super(anchor: Anchor.center);
+  Bubble() : super(priority: -1); // Let spawner control position
 
   @override
   FutureOr<void> onLoad() async {
-    // Sử dụng hình bong2.png có sẵn trong assets
-    sprite = await game.loadSprite('bong2.png');
-    
-    // Kích thước ngẫu nhiên
-    size = Vector2.all(10 + _random.nextDouble() * 20);
-    
-    // Tốc độ bay
-    _speed = 100 + _random.nextDouble() * 100;
+    await super.onLoad();
 
-    // Xuất hiện ở phía trên màn hình (để bay xuống)
+    sprite = await game.loadSprite('bong2.png');
+
+    final screenWidth = game.size.x;
+    final screenHeight = game.size.y;
+
+    // New, even smaller size
+    final bubbleSize = 5.0 + _random.nextDouble() * 10.0; 
+    size = Vector2.all(bubbleSize);
+
+    // Start just above the screen at a random horizontal position
     position = Vector2(
-      _random.nextDouble() * game.size.x,
-      -size.y,
+      _random.nextDouble() * screenWidth,
+      -size.y, // Start from the top
     );
 
-    // Độ mờ ngẫu nhiên để tạo hiệu ứng chiều sâu
-    opacity = 0.3 + _random.nextDouble() * 0.4;
+    // Bubbles don't need to collide with anything
+    // add(CircleHitbox()); 
 
-    return super.onLoad();
-  }
-
-  @override
-  void update(double dt) {
-    super.update(dt);
-    
-    // Bay từ trên xuống dưới (tạo hiệu ứng máy bay đang lao đi)
-    position.y += _speed * dt;
-
-    // Xóa khi bong bóng ra khỏi màn hình dưới
-    if (position.y > game.size.y + size.y) {
-      removeFromParent();
-    }
+    // Effect to move the bubble down across the screen and then remove it.
+    add(
+      MoveByEffect(
+        Vector2(0, screenHeight + size.y * 2), // Move down
+        EffectController(
+          duration: 5.0 + _random.nextDouble() * 5.0, // A bit slower for more natural feel
+        ),
+        onComplete: removeFromParent,
+      ),
+    );
   }
 }

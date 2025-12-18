@@ -23,9 +23,15 @@ class MyGame extends FlameGame
   late Player player;
   late JoystickComponent joystick;
   final Random _random = Random();
-  late ShootButton _shootButton;
+  ShootButton? _shootButton;
   final List<String> playerColors = ['red', 'blue'];
   int playerColorIndex = 0;
+
+  // Sprites
+  late Sprite _joystickKnobSprite;
+  late Sprite _joystickBackgroundSprite;
+  late Sprite _shieldIconSprite;
+  late Sprite _laserIconSprite;
   
   SpawnComponent? _asteroidSpawner;
   SpawnComponent? _monsterSpawner;
@@ -37,14 +43,12 @@ class MyGame extends FlameGame
   bool _levelTransitioning = false;
   SpriteComponent? _background;
 
+  // Level settings
   double _distanceTraveled = 0.0;
-  final double _targetDistanceLevel1 = 1100.0;
-  final double _targetDistanceLevel2 = 3000.0;
-  
-  // Speed logic: 1100km in 30s => ~36.67 km/s
-  final double _speedKmPerSecond = 1100.0 / 30.0; 
+  final List<double> _levelTargets = [12000.0, 30000.0];
+  final int _maxLevel = 3;
+  final double _speedKmPerSecond = 12000.0 / 30.0; 
 
-  // Make UI components nullable to safely check initialization
   TextComponent? _distanceDisplay;
   RectangleComponent? _progressBar;
   RectangleComponent? _progressFill;
@@ -56,11 +60,20 @@ class MyGame extends FlameGame
   int _score = 0;
 
   late final AudioManager audioManager;
+  late final double _safeTop;
 
   @override
   FutureOr<void> onLoad() async {
     await Flame.device.fullScreen();
     await Flame.device.setPortrait();
+
+    // Pre-load all UI assets
+    _joystickKnobSprite = await loadSprite('joystick_knob.png');
+    _joystickBackgroundSprite = await loadSprite('joystick_background.png');
+    _shieldIconSprite = await loadSprite('shield_pickup.png');
+    _laserIconSprite = await loadSprite('laser_pickup.png');
+
+    _safeTop = WidgetsBinding.instance.window.padding.top / WidgetsBinding.instance.window.devicePixelRatio;
 
     audioManager = AudioManager();
     await add(audioManager);
@@ -81,12 +94,12 @@ class MyGame extends FlameGame
       if (!_levelTransitioning) {
         _distanceTraveled += _speedKmPerSecond * dt;
 
-        double currentTarget = (currentLevel == 1) ? _targetDistanceLevel1 : _targetDistanceLevel2;
+        double currentTarget = (_levelTargets.length >= currentLevel) ? _levelTargets[currentLevel - 1] : double.infinity;
+        double progressBase = (currentLevel > 1) ? _levelTargets[currentLevel - 2] : 0;
+        double levelDistance = currentTarget - progressBase;
 
         if (_distanceDisplay != null && _progressFill != null) {
-            double progressBase = (currentLevel == 1) ? 0 : _targetDistanceLevel1;
-            double levelDistance = (currentLevel == 1) ? _targetDistanceLevel1 : (_targetDistanceLevel2 - _targetDistanceLevel1);
-            double progress = (_distanceTraveled - progressBase) / levelDistance;
+            double progress = (levelDistance > 0) ? (_distanceTraveled - progressBase) / levelDistance : 0.0;
             
             if (progress > 1.0) progress = 1.0;
             if (progress < 0.0) progress = 0.0;
@@ -95,7 +108,7 @@ class MyGame extends FlameGame
             _distanceDisplay!.text = '${_distanceTraveled.toInt()} km';
         }
 
-        if (_distanceTraveled >= currentTarget) {
+        if (currentLevel < _maxLevel && _distanceTraveled >= currentTarget) {
           _distanceTraveled = currentTarget;
           if (_distanceDisplay != null) {
              _distanceDisplay!.text = '${currentTarget.toInt()} km';
@@ -108,12 +121,7 @@ class MyGame extends FlameGame
 
   void _updatePowerupsDisplay() {
     if (_shieldIcon == null || _laserIcon == null) return;
-    
-    try {
-        if (!player.isMounted) return;
-    } catch (e) {
-        return; 
-    }
+    if (!player.isMounted) return;
 
     _shieldIcon!.opacity = player.hasShield ? 1 : 0;
 
@@ -135,17 +143,18 @@ class MyGame extends FlameGame
     currentLevel = 1;
     _distanceTraveled = 0.0;
     _levelTransitioning = false;
+    _score = 0;
     
-    await _createUI();
-    await _createJoystick();
-    _createShootButton();
-    
+    // Create player first to have access to player.lives
     await _createPlayer();
+    // Then create UI that might depend on player state
+    _createUI();
 
     _setupLevel();
   }
 
   void _setupLevel() {
+    // Clean up old level components
     children.whereType<Asteroid>().forEach((a) => a.removeFromParent());
     children.whereType<Monster>().forEach((m) => m.removeFromParent());
     children.whereType<Bubble>().forEach((b) => b.removeFromParent());
@@ -155,12 +164,12 @@ class MyGame extends FlameGame
     _background = null;
     _removeSpawners();
 
-    // DO NOT RESET _distanceTraveled HERE for Level 2+
-    // Only reset visual progress bar
-    if (_progressFill != null && contains(_progressFill!)) {
+    // Reset progress bar for the new level
+    if (currentLevel > 1 && _progressFill != null && contains(_progressFill!)) {
       _progressFill!.size = Vector2(10, 0);
     }
 
+    // Setup new level components
     if (currentLevel == 1) {
       if (children.whereType<Star>().isEmpty) _createStars();
       _createAsteroidSpawner();
@@ -192,6 +201,28 @@ class MyGame extends FlameGame
     _redDustSpawner = null;
   }
 
+  void _removeAllUI() {
+    joystick.removeFromParent();
+    _shootButton?.removeFromParent();
+    _shootButton = null;
+    _scoreDisplay?.removeFromParent();
+    _scoreDisplay = null;
+    _healthDisplay?.removeFromParent();
+    _healthDisplay = null;
+    _distanceDisplay?.removeFromParent();
+    _distanceDisplay = null;
+    _progressBar?.removeFromParent();
+    _progressBar = null;
+    _progressFill?.removeFromParent();
+    _progressFill = null;
+    _shieldIcon?.removeFromParent();
+    _shieldIcon = null;
+    _laserIcon?.removeFromParent();
+    _laserIcon = null;
+    _menuBtn?.removeFromParent();
+    _menuBtn = null;
+  }
+
   void _stopAllSpawners() {
     _asteroidSpawner?.timer.stop();
     _monsterSpawner?.timer.stop();
@@ -203,7 +234,10 @@ class MyGame extends FlameGame
   void _startLevelTransition() {
     if (_levelTransitioning) return;
     _levelTransitioning = true;
+    
+    player.stopShooting();
     _stopAllSpawners();
+    _removeAllUI();
 
     player.add(
       MoveToEffect(
@@ -247,22 +281,32 @@ class MyGame extends FlameGame
 
   void _bringPlayerBack() {
     player.position = Vector2(size.x / 2, size.y + player.size.y * 2);
-    player.add(
+    player.opacity = 0;
+    
+    player.addAll([
       MoveToEffect(
         Vector2(size.x / 2, size.y * 0.80),
         EffectController(duration: 0.5, curve: Curves.easeOutBack),
-        onComplete: () => _levelTransitioning = false,
+        onComplete: () {
+          _levelTransitioning = false;
+          _createUI();
+        }
       ),
-    );
+      OpacityEffect.fadeIn(
+        EffectController(duration: 0.5, curve: Curves.easeIn),
+      )
+    ]);
   }
 
-  Future<void> _createUI() async {
-    _createScoreDisplay();
-    _createHealthDisplay();
-    _createDistanceDisplay();
-    _createProgressBar();
-    await _createPowerupsDisplay();
-    _createPauseButton();
+  void _createUI() {
+    _createJoystick();
+    _createShootButton();
+    _createScoreDisplay(_safeTop);
+    _createHealthDisplay(_safeTop);
+    _createDistanceDisplay(_safeTop);
+    _createProgressBar(_safeTop);
+    _createPowerupsDisplay(_safeTop);
+    _createPauseButton(_safeTop);
   }
 
   Future<void> _createPlayer() async {
@@ -271,10 +315,10 @@ class MyGame extends FlameGame
     await add(player);
   }
 
-  Future<void> _createJoystick() async {
+  void _createJoystick() {
     joystick = JoystickComponent(
-      knob: SpriteComponent(sprite: await loadSprite('joystick_knob.png'), size: Vector2.all(50)),
-      background: SpriteComponent(sprite: await loadSprite('joystick_background.png'), size: Vector2.all(100)),
+      knob: SpriteComponent(sprite: _joystickKnobSprite, size: Vector2.all(50)),
+      background: SpriteComponent(sprite: _joystickBackgroundSprite, size: Vector2.all(100)),
       anchor: Anchor.bottomLeft,
       position: Vector2(20, size.y - 20),
       priority: 100,
@@ -287,12 +331,12 @@ class MyGame extends FlameGame
       ..anchor = Anchor.bottomRight
       ..position = Vector2(size.x - 20, size.y - 20)
       ..priority = 100;
-    add(_shootButton);
+    add(_shootButton!);
   }
 
-  void _createPauseButton() {
+  void _createPauseButton(double topMargin) {
     _menuBtn = HamburgerMenuComponent(
-      position: Vector2(size.x - 30, 50),
+      position: Vector2(size.x - 30, topMargin + 30),
       onPressed: pauseGame,
     );
     add(_menuBtn!);
@@ -337,13 +381,12 @@ class MyGame extends FlameGame
   }
 
   void _createBubbleSpawner() {
-    // FIX: Ensure this spawner runs continuously and frequently
     _bubbleSpawner = SpawnComponent.periodRange(
       factory: (index) => Bubble(),
-      minPeriod: 0.1, // Very fast spawn for continuous stream
+      minPeriod: 0.1,
       maxPeriod: 0.3,
       autoStart: true,
-      selfPositioning: true, // Let the component decide position or handle here
+      selfPositioning: true, 
     );
     add(_bubbleSpawner!);
   }
@@ -387,23 +430,23 @@ class MyGame extends FlameGame
     }
   }
 
-  void _createScoreDisplay() {
-    _score = 0;
+  void _createScoreDisplay(double topMargin) {
     _scoreDisplay = TextComponent(
-      text: '0',
+      text: '$_score',
       anchor: Anchor.topCenter,
-      position: Vector2(size.x / 2, 20),
+      position: Vector2(size.x / 2, topMargin + 5),
       priority: 10,
       textRenderer: TextPaint(style: const TextStyle(color: Colors.white, fontSize: 48, fontWeight: FontWeight.bold, shadows: [Shadow(color: Colors.black, offset: Offset(2, 2), blurRadius: 2)])),
     );
     add(_scoreDisplay!);
   }
 
-  void _createHealthDisplay() {
+  void _createHealthDisplay(double topMargin) {
+    final hearts = ''.padRight(player.lives, '❤️');
     _healthDisplay = TextComponent(
-      text: '❤️❤️❤️',
+      text: hearts,
       anchor: Anchor.topLeft,
-      position: Vector2(20, 20),
+      position: Vector2(20, topMargin + 5),
       priority: 10,
       textRenderer: TextPaint(style: const TextStyle(fontSize: 30, shadows: [Shadow(color: Colors.black, offset: Offset(2, 2), blurRadius: 2)])),
     );
@@ -416,40 +459,43 @@ class MyGame extends FlameGame
     _healthDisplay!.text = hearts;
   }
 
-  void _createDistanceDisplay() {
+  void _createDistanceDisplay(double topMargin) {
     _distanceDisplay = TextComponent(
-      text: '0 km',
+      text: '${_distanceTraveled.toInt()} km',
       anchor: Anchor.topLeft,
-      position: Vector2(40, 100),
+      position: Vector2(40, topMargin + 80),
       priority: 10,
       textRenderer: TextPaint(style: const TextStyle(color: Colors.cyanAccent, fontSize: 18, fontWeight: FontWeight.bold, shadows: [Shadow(color: Colors.black, offset: Offset(1, 1), blurRadius: 2)])),
     );
     add(_distanceDisplay!);
   }
 
-  void _createProgressBar() {
-    _progressBar = RectangleComponent(size: Vector2(10, 200), position: Vector2(20, 100), paint: Paint()..color = Colors.grey.withOpacity(0.5), priority: 9);
+  void _createProgressBar(double topMargin) {
+    _progressBar = RectangleComponent(size: Vector2(10, 200), position: Vector2(20, topMargin + 80), paint: Paint()..color = Colors.grey.withOpacity(0.5), priority: 9);
     add(_progressBar!);
-    _progressFill = RectangleComponent(size: Vector2(10, 0), position: Vector2(20, 300), anchor: Anchor.bottomLeft, paint: Paint()..color = Colors.greenAccent, priority: 10);
+    final progress = (_distanceTraveled > _levelTargets[0])
+        ? (_distanceTraveled - _levelTargets[0]) / (_levelTargets[1] - _levelTargets[0])
+        : _distanceTraveled / _levelTargets[0];
+    _progressFill = RectangleComponent(size: Vector2(10, 200 * progress), position: Vector2(20, topMargin + 280), anchor: Anchor.bottomLeft, paint: Paint()..color = Colors.greenAccent, priority: 10);
     add(_progressFill!);
   }
 
-  Future<void> _createPowerupsDisplay() async {
+  void _createPowerupsDisplay(double topMargin) {
     _shieldIcon = SpriteComponent(
-      sprite: await loadSprite('shield_pickup.png'),
+      sprite: _shieldIconSprite,
       size: Vector2.all(40),
       anchor: Anchor.topRight,
-      position: Vector2(size.x - 20, 100),
+      position: Vector2(size.x - 20, topMargin + 80),
       priority: 10,
-    )..opacity = 0;
+    )..opacity = player.hasShield ? 1 : 0;
 
     _laserIcon = SpriteComponent(
-      sprite: await loadSprite('laser_pickup.png'),
+      sprite: _laserIconSprite,
       size: Vector2.all(40),
       anchor: Anchor.topRight,
-      position: Vector2(size.x - 20, 150),
+      position: Vector2(size.x - 20, topMargin + 130),
       priority: 10,
-    )..opacity = 0;
+    )..opacity = player.isLaserActive ? 1 : 0;
 
     add(_shieldIcon!);
     add(_laserIcon!);
@@ -471,8 +517,9 @@ class MyGame extends FlameGame
     _levelTransitioning = false;
     _distanceTraveled = 0.0;
     currentLevel = 1;
+    _score = 0;
     
-    // Remove all components except essential ones
+    // Remove all game components except for the essentials
     children.where((c) => c is! CameraComponent && c is! AudioManager).forEach(remove);
 
     _createStars();

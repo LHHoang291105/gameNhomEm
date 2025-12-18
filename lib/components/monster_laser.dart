@@ -1,13 +1,20 @@
 import 'dart:async';
+import 'dart:math';
 
-import 'package:cosmic_havoc/components/player.dart';
+import 'package:cosmic_havoc/my_game.dart';
 import 'package:flame/collisions.dart';
 import 'package:flame/components.dart';
 
-class MonsterLaser extends SpriteComponent with HasGameRef, CollisionCallbacks {
+class MonsterLaser extends SpriteComponent with HasGameReference<MyGame>, CollisionCallbacks {
+  final double _speed = 250; // Reduced speed
 
-  MonsterLaser({required super.position}) 
-      : super(size: Vector2(20, 40), anchor: Anchor.center);
+  MonsterLaser({
+    required super.position,
+    required super.angle,
+  }) : super(
+          size: Vector2(20, 40), // Adjust size as needed
+          anchor: Anchor.center,
+        );
 
   @override
   FutureOr<void> onLoad() async {
@@ -19,18 +26,29 @@ class MonsterLaser extends SpriteComponent with HasGameRef, CollisionCallbacks {
   @override
   void update(double dt) {
     super.update(dt);
-    position.y += 300 * dt;
 
-    if (position.y > game.size.y) {
+    // Move in the direction of the angle
+    position.x += _speed * dt * cos(angle - pi / 2);
+    position.y += _speed * dt * sin(angle - pi / 2);
+
+    // Remove if it goes off screen
+    if (position.y > game.size.y ||
+        position.y < -size.y ||
+        position.x > game.size.x ||
+        position.x < -size.x) {
       removeFromParent();
     }
   }
 
   @override
-  void onCollision(Set<Vector2> intersectionPoints, PositionComponent other) {
-    super.onCollision(intersectionPoints, other);
-    if (other is Player) {
-        removeFromParent();
-    }
+  void onCollisionStart(
+    Set<Vector2> intersectionPoints,
+    PositionComponent other,
+  ) {
+    super.onCollisionStart(intersectionPoints, other);
+
+    // The logic to handle collision with the player is in the player component
+    // So we just need to remove the laser itself.
+    removeFromParent();
   }
 }

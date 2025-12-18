@@ -30,9 +30,9 @@ class Laser extends SpriteComponent with HasGameReference<MyGame>, CollisionCall
   void update(double dt) {
     super.update(dt);
 
-    // Di chuyển theo hướng góc quay
-    position.y -= _speed * dt * (cos(angle));
-    position.x += _speed * dt * (sin(angle));
+    // Correct trigonometric movement
+    position.x += _speed * dt * sin(angle);
+    position.y -= _speed * dt * cos(angle);
 
     if (position.y < -size.y || position.x < 0 || position.x > game.size.x) {
       removeFromParent();
