@@ -3,8 +3,12 @@ import 'dart:math';
 
 import 'package:cosmic_havoc/components/asteroid.dart';
 import 'package:cosmic_havoc/components/audio_manager.dart';
+import 'package:cosmic_havoc/components/boss_monster.dart';
 import 'package:cosmic_havoc/components/bubble.dart';
 import 'package:cosmic_havoc/components/monster.dart';
+import 'package:cosmic_havoc/components/monster_laser.dart';
+import 'package:cosmic_havoc/components/laser.dart';
+import 'package:cosmic_havoc/components/red_laser.dart';
 import 'package:cosmic_havoc/components/pickup.dart';
 import 'package:cosmic_havoc/components/player.dart';
 import 'package:cosmic_havoc/components/red_dust.dart';
@@ -27,27 +31,27 @@ class MyGame extends FlameGame
   final List<String> playerColors = ['red', 'blue'];
   int playerColorIndex = 0;
 
-  // Sprites
   late Sprite _joystickKnobSprite;
   late Sprite _joystickBackgroundSprite;
   late Sprite _shieldIconSprite;
   late Sprite _laserIconSprite;
   
   SpawnComponent? _asteroidSpawner;
-  SpawnComponent? _monsterSpawner;
-  SpawnComponent? _pickupSpawner;
   SpawnComponent? _bubbleSpawner;
   SpawnComponent? _redDustSpawner;
 
+  double _monsterSpawnTimer = 0;
+
   int currentLevel = 1;
   bool _levelTransitioning = false;
+  bool _bossSpawned = false;
   SpriteComponent? _background;
 
-  // Level settings
   double _distanceTraveled = 0.0;
-  final List<double> _levelTargets = [12000.0, 30000.0];
+  // Level targets: Màn 1 (12k), Màn 2 (30k), Màn 3 (50k - Sau đó là Boss)
+  final List<double> _levelTargets = [12000.0, 30000.0, 50000.0]; 
   final int _maxLevel = 3;
-  final double _speedKmPerSecond = 12000.0 / 30.0; 
+  final double _speedKmPerSecond = 400.0; 
 
   TextComponent? _distanceDisplay;
   RectangleComponent? _progressBar;
@@ -59,6 +63,8 @@ class MyGame extends FlameGame
   HamburgerMenuComponent? _menuBtn; 
   int _score = 0;
 
+  int get score => _score; 
+
   late final AudioManager audioManager;
   late final double _safeTop;
 
@@ -67,7 +73,6 @@ class MyGame extends FlameGame
     await Flame.device.fullScreen();
     await Flame.device.setPortrait();
 
-    // Pre-load all UI assets
     _joystickKnobSprite = await loadSprite('joystick_knob.png');
     _joystickBackgroundSprite = await loadSprite('joystick_background.png');
     _shieldIconSprite = await loadSprite('shield_pickup.png');
@@ -78,7 +83,6 @@ class MyGame extends FlameGame
     audioManager = AudioManager();
     await add(audioManager);
     audioManager.playMusic();
-    
     _createStars();
 
     return super.onLoad();
@@ -94,48 +98,89 @@ class MyGame extends FlameGame
       if (!_levelTransitioning) {
         _distanceTraveled += _speedKmPerSecond * dt;
 
+        _handleMonsterSpawning(dt);
+
+        // BOSS XUẤT HIỆN KHI ĐẠT 50,000 KM
+        if (currentLevel == 3 && _distanceTraveled >= 50000 && !_bossSpawned) {
+          _triggerBossEvent();
+        }
+
         double currentTarget = (_levelTargets.length >= currentLevel) ? _levelTargets[currentLevel - 1] : double.infinity;
         double progressBase = (currentLevel > 1) ? _levelTargets[currentLevel - 2] : 0;
         double levelDistance = currentTarget - progressBase;
 
         if (_distanceDisplay != null && _progressFill != null) {
             double progress = (levelDistance > 0) ? (_distanceTraveled - progressBase) / levelDistance : 0.0;
-            
-            if (progress > 1.0) progress = 1.0;
-            if (progress < 0.0) progress = 0.0;
-
-            _progressFill!.size = Vector2(10, 200 * progress);
+            _progressFill!.size = Vector2(10, 200 * progress.clamp(0, 1));
             _distanceDisplay!.text = '${_distanceTraveled.toInt()} km';
         }
 
+        // Chuyển màn ở level 1 và 2. Level 3 chỉ kết thúc khi Boss chết.
         if (currentLevel < _maxLevel && _distanceTraveled >= currentTarget) {
           _distanceTraveled = currentTarget;
-          if (_distanceDisplay != null) {
-             _distanceDisplay!.text = '${currentTarget.toInt()} km';
-          }
           _startLevelTransition();
         }
       }
     }
   }
 
+  void _handleMonsterSpawning(double dt) {
+    if (currentLevel < 2 || _bossSpawned) return;
+
+    _monsterSpawnTimer -= dt;
+    if (_monsterSpawnTimer <= 0) {
+      double spawnRate;
+      if (currentLevel == 2) {
+        if (_distanceTraveled < 20000) {
+          spawnRate = 1.2 + _random.nextDouble() * 1.0; 
+        } else {
+          spawnRate = 0.8 + _random.nextDouble() * 0.8; 
+        }
+      } else {
+        // Level 3: Spawn nhiều hơn nữa
+        spawnRate = 0.6 + _random.nextDouble() * 0.8;
+      }
+
+      add(Monster(position: _generateSpawnPosition()));
+      
+      // Đôi khi spawn 2 con cùng lúc ở level 3
+      if (currentLevel == 3 && _random.nextDouble() < 0.4) {
+          add(Monster(position: _generateSpawnPosition()));
+      }
+
+      _monsterSpawnTimer = spawnRate;
+    }
+  }
+
+  void _triggerBossEvent() {
+    _bossSpawned = true;
+    _stopAllSpawners();
+    children.whereType<Monster>().forEach((m) => m.explodeSilently());
+
+    final alarmOverlay = RectangleComponent(
+      size: size,
+      paint: Paint()..color = Colors.red.withOpacity(0.3),
+      priority: 100,
+    );
+    add(alarmOverlay);
+    alarmOverlay.add(OpacityEffect.to(0.1, EffectController(duration: 0.5, reverseDuration: 0.5, repeatCount: 3), onComplete: () {
+      alarmOverlay.removeFromParent();
+      add(BossMonster(position: Vector2(size.x / 2, -150)));
+    }));
+  }
+
+  void victory() {
+    pauseEngine();
+    overlays.add('Victory'); 
+  }
+
   void _updatePowerupsDisplay() {
     if (_shieldIcon == null || _laserIcon == null) return;
-    if (!player.isMounted) return;
-
     _shieldIcon!.opacity = player.hasShield ? 1 : 0;
-
     if (!player.isLaserActive) {
       _laserIcon!.opacity = 0;
-      return;
-    }
-
-    if (player.laserRemainingTime < 3.0) {
-      const blinkSpeed = 10.0;
-      _laserIcon!.opacity =
-          (sin(player.laserRemainingTime * blinkSpeed) + 1) / 2;
     } else {
-      _laserIcon!.opacity = 1.0;
+      _laserIcon!.opacity = (player.laserRemainingTime < 3.0) ? (sin(player.laserRemainingTime * 10) + 1) / 2 : 1.0;
     }
   }
 
@@ -143,60 +188,46 @@ class MyGame extends FlameGame
     currentLevel = 1;
     _distanceTraveled = 0.0;
     _levelTransitioning = false;
+    _bossSpawned = false;
+    _monsterSpawnTimer = 0;
     _score = 0;
-    
-    // Create player first to have access to player.lives
     await _createPlayer();
-    // Then create UI that might depend on player state
     _createUI();
-
     _setupLevel();
   }
 
   void _setupLevel() {
-    // Clean up old level components
-    children.whereType<Asteroid>().forEach((a) => a.removeFromParent());
-    children.whereType<Monster>().forEach((m) => m.removeFromParent());
-    children.whereType<Bubble>().forEach((b) => b.removeFromParent());
-    children.whereType<RedDust>().forEach((d) => d.removeFromParent());
+    children.where((c) => c is Asteroid || c is Monster || c is BossMonster || 
+                         c is Bubble || c is RedDust || c is Pickup || 
+                         c is MonsterLaser || c is Laser || c is RedLaser ||
+                         (c is RectangleComponent && c.priority == 100))
+            .forEach((c) => c.removeFromParent());
     
+    if (currentLevel > 1) {
+      children.whereType<Star>().forEach((s) => s.removeFromParent());
+    }
+
     _background?.removeFromParent();
     _background = null;
     _removeSpawners();
 
-    // Reset progress bar for the new level
-    if (currentLevel > 1 && _progressFill != null && contains(_progressFill!)) {
-      _progressFill!.size = Vector2(10, 0);
-    }
-
-    // Setup new level components
     if (currentLevel == 1) {
       if (children.whereType<Star>().isEmpty) _createStars();
       _createAsteroidSpawner();
     } else if (currentLevel == 2) {
-      children.whereType<Star>().forEach((s) => s.removeFromParent());
       _createSaoThuyBackground();
       _createBubbleSpawner();
-      _createMonsterSpawner();
     } else if (currentLevel == 3) {
-      children.whereType<Star>().forEach((s) => s.removeFromParent());
       _createSaoHoaBackground();
       _createRedDustSpawner();
-      _createMonsterSpawner();
     }
-
-    _createPickupSpawner();
   }
 
   void _removeSpawners() {
     _asteroidSpawner?.removeFromParent();
-    _monsterSpawner?.removeFromParent();
-    _pickupSpawner?.removeFromParent();
     _bubbleSpawner?.removeFromParent();
     _redDustSpawner?.removeFromParent();
     _asteroidSpawner = null;
-    _monsterSpawner = null;
-    _pickupSpawner = null;
     _bubbleSpawner = null;
     _redDustSpawner = null;
   }
@@ -225,76 +256,41 @@ class MyGame extends FlameGame
 
   void _stopAllSpawners() {
     _asteroidSpawner?.timer.stop();
-    _monsterSpawner?.timer.stop();
-    _pickupSpawner?.timer.stop();
-    _bubbleSpawner?.timer.stop();
-    _redDustSpawner?.timer.stop();
   }
 
   void _startLevelTransition() {
     if (_levelTransitioning) return;
     _levelTransitioning = true;
-    
+    player.isTransitioning = true;
     player.stopShooting();
     _stopAllSpawners();
     _removeAllUI();
-
-    player.add(
-      MoveToEffect(
-        Vector2(size.x / 2, -player.size.y * 2),
-        EffectController(duration: 0.5, curve: Curves.easeIn),
-        onComplete: _playTransitionSequence,
-      ),
-    );
+    player.add(MoveToEffect(Vector2(size.x / 2, -player.size.y * 2), EffectController(duration: 0.5, curve: Curves.easeIn), onComplete: _playTransitionSequence));
   }
 
   void _playTransitionSequence() {
-    final blackOverlay = RectangleComponent(
-      size: size,
-      paint: Paint()..color = Colors.black,
-      priority: 1000,
-    )..opacity = 0;
+    final blackOverlay = RectangleComponent(size: size, paint: Paint()..color = Colors.black, priority: 1000)..opacity = 0;
     add(blackOverlay);
-
-    blackOverlay.add(
-      OpacityEffect.to(
-        1.0,
-        EffectController(duration: 0.5, curve: Curves.easeOut),
-        onComplete: () {
-           currentLevel++; 
-           _setupLevel();
-           
-           blackOverlay.add(
-             OpacityEffect.to(
-               0.0,
-               EffectController(duration: 1.0, curve: Curves.easeIn, startDelay: 0.5),
-               onComplete: () {
-                 blackOverlay.removeFromParent();
-                 _bringPlayerBack();
-               }
-             )
-           );
-        }
-      )
-    );
+    blackOverlay.add(OpacityEffect.to(1.0, EffectController(duration: 0.5, curve: Curves.easeOut), onComplete: () {
+       currentLevel++; 
+       _setupLevel();
+       blackOverlay.add(OpacityEffect.to(0.0, EffectController(duration: 1.0, curve: Curves.easeIn, startDelay: 0.5), onComplete: () {
+         blackOverlay.removeFromParent();
+         _bringPlayerBack();
+       }));
+    }));
   }
 
   void _bringPlayerBack() {
     player.position = Vector2(size.x / 2, size.y + player.size.y * 2);
     player.opacity = 0;
-    
     player.addAll([
-      MoveToEffect(
-        Vector2(size.x / 2, size.y * 0.80),
-        EffectController(duration: 0.5, curve: Curves.easeOutBack),
-        onComplete: () {
-          _levelTransitioning = false;
-          _createUI();
-        }
-      ),
-      OpacityEffect.fadeIn(
-        EffectController(duration: 0.5, curve: Curves.easeIn),
-      )
+      MoveToEffect(Vector2(size.x / 2, size.y * 0.80), EffectController(duration: 0.5, curve: Curves.easeOutBack), onComplete: () {
+        _levelTransitioning = false;
+        player.isTransitioning = false;
+        _createUI();
+      }),
+      OpacityEffect.fadeIn(EffectController(duration: 0.5, curve: Curves.easeIn))
     ]);
   }
 
@@ -327,232 +323,101 @@ class MyGame extends FlameGame
   }
 
   void _createShootButton() {
-    _shootButton = ShootButton()
-      ..anchor = Anchor.bottomRight
-      ..position = Vector2(size.x - 20, size.y - 20)
-      ..priority = 100;
+    _shootButton = ShootButton()..anchor = Anchor.bottomRight..position = Vector2(size.x - 20, size.y - 20)..priority = 100;
     add(_shootButton!);
   }
 
   void _createPauseButton(double topMargin) {
-    _menuBtn = HamburgerMenuComponent(
-      position: Vector2(size.x - 30, topMargin + 30),
-      onPressed: pauseGame,
-    );
+    _menuBtn = HamburgerMenuComponent(position: Vector2(size.x - 30, topMargin + 30), onPressed: pauseGame);
     add(_menuBtn!);
   }
 
-  void pauseGame() {
-    pauseEngine();
-    overlays.add('PauseMenu');
-  }
+  void pauseGame() { pauseEngine(); overlays.add('PauseMenu'); }
 
   void _createAsteroidSpawner() {
-    _asteroidSpawner = SpawnComponent.periodRange(
-      factory: (index) => Asteroid(position: _generateSpawnPosition()),
-      minPeriod: 0.7,
-      maxPeriod: 1.2,
-      autoStart: true,
-    );
+    _asteroidSpawner = SpawnComponent.periodRange(factory: (index) => Asteroid(position: _generateSpawnPosition()), minPeriod: 0.7, maxPeriod: 1.2, autoStart: true);
     add(_asteroidSpawner!);
   }
 
-  void _createMonsterSpawner() {
-    _monsterSpawner = SpawnComponent.periodRange(
-      factory: (index) => Monster(position: _generateSpawnPosition()),
-      minPeriod: 1.5,
-      maxPeriod: 2.5,
-      autoStart: true,
-    );
-    add(_monsterSpawner!);
-  }
-
-  void _createPickupSpawner() {
-    _pickupSpawner = SpawnComponent.periodRange(
-      factory: (index) => Pickup(
-        pickupType: PickupType.values[_random.nextInt(PickupType.values.length)],
-        position: _generateSpawnPosition(),
-      ),
-      minPeriod: 10.0,
-      maxPeriod: 20.0,
-      autoStart: true,
-    );
-    add(_pickupSpawner!);
-  }
-
   void _createBubbleSpawner() {
-    _bubbleSpawner = SpawnComponent.periodRange(
-      factory: (index) => Bubble(),
-      minPeriod: 0.1,
-      maxPeriod: 0.3,
-      autoStart: true,
-      selfPositioning: true, 
-    );
+    _bubbleSpawner = SpawnComponent.periodRange(factory: (index) => Bubble(), minPeriod: 0.1, maxPeriod: 0.3, autoStart: true, selfPositioning: true);
     add(_bubbleSpawner!);
   }
   
   void _createRedDustSpawner() {
-    _redDustSpawner = SpawnComponent.periodRange(
-        factory: (index) => RedDust(),
-        minPeriod: 0.2,
-        maxPeriod: 0.5,
-        autoStart: true);
+    _redDustSpawner = SpawnComponent.periodRange(factory: (index) => RedDust(), minPeriod: 0.2, maxPeriod: 0.5, autoStart: true);
     add(_redDustSpawner!);
   }
 
-  Vector2 _generateSpawnPosition() {
-    return Vector2(_random.nextDouble() * size.x, -150);
-  }
+  Vector2 _generateSpawnPosition() { return Vector2(_random.nextDouble() * size.x, -150 - _random.nextDouble() * 200); }
   
-  void _createSaoThuyBackground() async {
-    _background = SpriteComponent(
-      sprite: await loadSprite('sao_thuy.png'),
-      size: size,
-      priority: -100,
-    );
-    add(_background!);
-  }
-  
-  void _createSaoHoaBackground() async {
-    _background = SpriteComponent(
-      sprite: await loadSprite('sao_hoa.png'),
-      size: size,
-      priority: -100,
-    );
-    add(_background!);
-  }
+  void _createSaoThuyBackground() async { _background = SpriteComponent(sprite: await loadSprite('sao_thuy.png'), size: size, priority: -100); add(_background!); }
+  void _createSaoHoaBackground() async { _background = SpriteComponent(sprite: await loadSprite('sao_hoa.png'), size: size, priority: -100); add(_background!); }
 
-  void _createStars() {
-    if (children.whereType<Star>().isEmpty) {
-        for (int i = 0; i < 50; i++) {
-          add(Star()..priority = -10);
-        }
-    }
-  }
+  void _createStars() { if (children.whereType<Star>().isEmpty) { for (int i = 0; i < 50; i++) { add(Star()..priority = -10); } } }
 
   void _createScoreDisplay(double topMargin) {
-    _scoreDisplay = TextComponent(
-      text: '$_score',
-      anchor: Anchor.topCenter,
-      position: Vector2(size.x / 2, topMargin + 5),
-      priority: 10,
-      textRenderer: TextPaint(style: const TextStyle(color: Colors.white, fontSize: 48, fontWeight: FontWeight.bold, shadows: [Shadow(color: Colors.black, offset: Offset(2, 2), blurRadius: 2)])),
-    );
+    _scoreDisplay = TextComponent(text: '$_score', anchor: Anchor.topCenter, position: Vector2(size.x / 2, topMargin + 5), priority: 10, textRenderer: TextPaint(style: const TextStyle(color: Colors.white, fontSize: 48, fontWeight: FontWeight.bold, shadows: [Shadow(color: Colors.black, offset: Offset(2, 2), blurRadius: 2)])));
     add(_scoreDisplay!);
   }
 
   void _createHealthDisplay(double topMargin) {
-    final hearts = ''.padRight(player.lives, '❤️');
-    _healthDisplay = TextComponent(
-      text: hearts,
-      anchor: Anchor.topLeft,
-      position: Vector2(20, topMargin + 5),
-      priority: 10,
-      textRenderer: TextPaint(style: const TextStyle(fontSize: 30, shadows: [Shadow(color: Colors.black, offset: Offset(2, 2), blurRadius: 2)])),
-    );
+    _healthDisplay = TextComponent(text: ''.padRight(player.lives, '❤️'), anchor: Anchor.topLeft, position: Vector2(20, topMargin + 5), priority: 10, textRenderer: TextPaint(style: const TextStyle(fontSize: 30, shadows: [Shadow(color: Colors.black, offset: Offset(2, 2), blurRadius: 2)])));
     add(_healthDisplay!);
   }
 
-  void updatePlayerHealth(int lives) {
-    if (_healthDisplay == null) return;
-    final hearts = ''.padRight(lives, '❤️');
-    _healthDisplay!.text = hearts;
-  }
+  void updatePlayerHealth(int lives) { if (_healthDisplay != null) _healthDisplay!.text = ''.padRight(lives, '❤️'); }
 
   void _createDistanceDisplay(double topMargin) {
-    _distanceDisplay = TextComponent(
-      text: '${_distanceTraveled.toInt()} km',
-      anchor: Anchor.topLeft,
-      position: Vector2(40, topMargin + 80),
-      priority: 10,
-      textRenderer: TextPaint(style: const TextStyle(color: Colors.cyanAccent, fontSize: 18, fontWeight: FontWeight.bold, shadows: [Shadow(color: Colors.black, offset: Offset(1, 1), blurRadius: 2)])),
-    );
+    _distanceDisplay = TextComponent(text: '${_distanceTraveled.toInt()} km', anchor: Anchor.topLeft, position: Vector2(40, topMargin + 80), priority: 10, textRenderer: TextPaint(style: const TextStyle(color: Colors.cyanAccent, fontSize: 18, fontWeight: FontWeight.bold, shadows: [Shadow(color: Colors.black, offset: Offset(1, 1), blurRadius: 2)])));
     add(_distanceDisplay!);
   }
 
   void _createProgressBar(double topMargin) {
     _progressBar = RectangleComponent(size: Vector2(10, 200), position: Vector2(20, topMargin + 80), paint: Paint()..color = Colors.grey.withOpacity(0.5), priority: 9);
     add(_progressBar!);
-    final progress = (_distanceTraveled > _levelTargets[0])
-        ? (_distanceTraveled - _levelTargets[0]) / (_levelTargets[1] - _levelTargets[0])
-        : _distanceTraveled / _levelTargets[0];
-    _progressFill = RectangleComponent(size: Vector2(10, 200 * progress), position: Vector2(20, topMargin + 280), anchor: Anchor.bottomLeft, paint: Paint()..color = Colors.greenAccent, priority: 10);
+    _progressFill = RectangleComponent(size: Vector2(10, 0), position: Vector2(20, topMargin + 280), anchor: Anchor.bottomLeft, paint: Paint()..color = Colors.greenAccent, priority: 10);
     add(_progressFill!);
   }
 
   void _createPowerupsDisplay(double topMargin) {
-    _shieldIcon = SpriteComponent(
-      sprite: _shieldIconSprite,
-      size: Vector2.all(40),
-      anchor: Anchor.topRight,
-      position: Vector2(size.x - 20, topMargin + 80),
-      priority: 10,
-    )..opacity = player.hasShield ? 1 : 0;
-
-    _laserIcon = SpriteComponent(
-      sprite: _laserIconSprite,
-      size: Vector2.all(40),
-      anchor: Anchor.topRight,
-      position: Vector2(size.x - 20, topMargin + 130),
-      priority: 10,
-    )..opacity = player.isLaserActive ? 1 : 0;
-
-    add(_shieldIcon!);
-    add(_laserIcon!);
+    _shieldIcon = SpriteComponent(sprite: _shieldIconSprite, size: Vector2.all(40), anchor: Anchor.topRight, position: Vector2(size.x - 20, topMargin + 80), priority: 10)..opacity = player.hasShield ? 1 : 0;
+    _laserIcon = SpriteComponent(sprite: _laserIconSprite, size: Vector2.all(40), anchor: Anchor.topRight, position: Vector2(size.x - 20, topMargin + 130), priority: 10)..opacity = player.isLaserActive ? 1 : 0;
+    add(_shieldIcon!); add(_laserIcon!);
   }
 
   void incrementScore(int amount) {
     if (_levelTransitioning || _scoreDisplay == null) return;
-    _score += amount;
-    _scoreDisplay!.text = _score.toString();
+    _score += amount; _scoreDisplay!.text = _score.toString();
     _scoreDisplay!.add(ScaleEffect.to(Vector2.all(1.2), EffectController(duration: 0.05, alternate: true)));
   }
 
-  void playerDied() {
-    overlays.add('GameOver');
-    pauseEngine();
-  }
+  void playerDied() { overlays.add('GameOver'); pauseEngine(); }
 
   void restartGame() {
-    _levelTransitioning = false;
-    _distanceTraveled = 0.0;
-    currentLevel = 1;
-    _score = 0;
-    
-    // Remove all game components except for the essentials
-    children.where((c) => c is! CameraComponent && c is! AudioManager).forEach(remove);
-
-    _createStars();
-    startGame();
-    resumeEngine();
+    _levelTransitioning = false; _distanceTraveled = 0.0; currentLevel = 1; _score = 0; _bossSpawned = false;
+    children.where((c) => c is! CameraComponent && c is! AudioManager).forEach((c) => c.removeFromParent());
+    _createStars(); startGame(); resumeEngine();
   }
 
   void quitGame() {
-    children.where((c) => c is! CameraComponent && c is! AudioManager && c is! Star).forEach(remove);
-    
-    if (children.whereType<Star>().isEmpty) {
-        _createStars();
-    }
-
-    overlays.add('Title');
-    resumeEngine();
+    children.where((c) => c is! CameraComponent && c is! AudioManager && c is! Star).forEach((c) => c.removeFromParent());
+    if (children.whereType<Star>().isEmpty) _createStars();
+    overlays.add('Title'); resumeEngine();
   }
 }
 
 class HamburgerMenuComponent extends PositionComponent with TapCallbacks {
   final VoidCallback onPressed;
   HamburgerMenuComponent({required super.position, required this.onPressed}) : super(size: Vector2(40, 30), anchor: Anchor.center, priority: 20);
-
   @override
   void render(Canvas canvas) {
     final paint = Paint()..color = Colors.white..style = PaintingStyle.fill;
-    const lineHeight = 4.0;
-    const gap = 6.0;
+    const lineHeight = 4.0; const gap = 6.0;
     canvas.drawRect(Rect.fromLTWH(0, 0, width, lineHeight), paint);
     canvas.drawRect(Rect.fromLTWH(0, lineHeight + gap, width, lineHeight), paint);
     canvas.drawRect(Rect.fromLTWH(0, (lineHeight + gap) * 2, width, lineHeight), paint);
   }
-
   @override
   void onTapDown(TapDownEvent event) => onPressed();
 }

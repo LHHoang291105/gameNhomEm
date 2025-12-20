@@ -51,6 +51,16 @@ class _GameOverOverlayState extends State<GameOverOverlay> {
                 fontWeight: FontWeight.bold,
               ),
             ),
+            const SizedBox(height: 10),
+            // Hiển thị điểm số khi thua
+            Text(
+              'SCORE: ${widget.game.score}',
+              style: const TextStyle(
+                color: Colors.redAccent,
+                fontSize: 32,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
             const SizedBox(height: 30),
             TextButton(
               onPressed: () {
@@ -68,7 +78,7 @@ class _GameOverOverlayState extends State<GameOverOverlay> {
                   borderRadius: BorderRadius.circular(50),
                 ),
               ),
-              child: Text(
+              child: const Text(
                 'PLAY AGAIN',
                 style: TextStyle(
                   color: Colors.white,
@@ -93,7 +103,7 @@ class _GameOverOverlayState extends State<GameOverOverlay> {
                   borderRadius: BorderRadius.circular(50),
                 ),
               ),
-              child: Text(
+              child: const Text(
                 'QUIT GAME',
                 style: TextStyle(
                   color: Colors.white,

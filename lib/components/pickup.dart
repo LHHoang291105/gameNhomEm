@@ -6,7 +6,7 @@ import 'package:flame/components.dart';
 import 'package:flame/effects.dart';
 import 'package:flutter/widgets.dart';
 
-enum PickupType { bomb, laser, shield }
+enum PickupType { bomb, laser, shield, heart }
 
 class Pickup extends SpriteComponent with HasGameReference<MyGame> {
   final PickupType pickupType;

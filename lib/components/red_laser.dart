@@ -1,29 +1,28 @@
 import 'dart:async';
-
+import 'dart:math';
 import 'package:cosmic_havoc/components/player.dart';
 import 'package:cosmic_havoc/my_game.dart';
 import 'package:flame/collisions.dart';
 import 'package:flame/components.dart';
 
-class MonsterLaser extends SpriteComponent with HasGameReference<MyGame>, CollisionCallbacks {
+class RedLaser extends SpriteComponent with HasGameReference<MyGame>, CollisionCallbacks {
   final Vector2 direction;
-  final double _speed = 200; // Tốc độ chậm lại đáng kể (từ 350 xuống 200)
+  final double speed; 
 
-  MonsterLaser({
-    required super.position,
+  RedLaser({
+    required super.position, 
     required this.direction,
+    required this.speed,
   }) : super(
-          size: Vector2(45, 120), // Tăng kích thước to thêm (từ 30x80 lên 45x120)
-          anchor: Anchor.center,
-          priority: 10,
-        );
+    size: Vector2(40, 120), // Tăng kích thước to và dài hơn hẳn
+    anchor: Anchor.center,
+    priority: 15,
+  );
 
   @override
   FutureOr<void> onLoad() async {
-    String laserSprite = game.currentLevel == 3 ? 'tiatim.png' : 'tiaxanh.png';
-    sprite = await game.loadSprite(laserSprite);
-    
-    angle = 0;
+    sprite = await game.loadSprite('red_laser.png');
+    angle = atan2(direction.y, direction.x) - pi / 2;
     add(RectangleHitbox());
     return super.onLoad();
   }
@@ -31,9 +30,10 @@ class MonsterLaser extends SpriteComponent with HasGameReference<MyGame>, Collis
   @override
   void update(double dt) {
     super.update(dt);
-    position += direction * _speed * dt;
+    position += direction * speed * dt;
 
-    if (position.y > game.size.y + 150 || position.y < -150) {
+    if (position.y > game.size.y + 200 || position.y < -200 || 
+        position.x > game.size.x + 200 || position.x < -200) {
       removeFromParent();
     }
   }

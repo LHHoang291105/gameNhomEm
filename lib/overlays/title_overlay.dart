@@ -42,128 +42,169 @@ class _TitleOverlayState extends State<TitleOverlay> {
       duration: const Duration(milliseconds: 500),
       child: Container(
         alignment: Alignment.topCenter,
-        child: Column(
+        child: Stack(
           children: [
-            const SizedBox(height: 60),
-            SizedBox(
-              width: 270,
-              child: Image.asset('assets/images/title.png'),
+            // Nút Hướng dẫn (Dấu chấm than) ở góc trên bên phải
+            PositionImage(
+              top: 50,
+              right: 20,
+              child: IconButton(
+                onPressed: () {
+                  widget.game.audioManager.playSound('click');
+                  widget.game.overlays.add('Instructions');
+                },
+                icon: Container(
+                  padding: const EdgeInsets.all(5),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.white, width: 2),
+                  ),
+                  child: const Icon(
+                    Icons.priority_high_rounded,
+                    color: Colors.white,
+                    size: 25,
+                  ),
+                ),
+              ),
             ),
-            const SizedBox(height: 20),
-            Row(
-              mainAxisSize: MainAxisSize.min,
+            
+            Column(
               children: [
+                const SizedBox(height: 60),
+                SizedBox(
+                  width: 270,
+                  child: Image.asset('assets/images/title.png'),
+                ),
+                const SizedBox(height: 20),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    GestureDetector(
+                      onTap: () {
+                        widget.game.audioManager.playSound('click');
+                        setState(() {
+                          widget.game.playerColorIndex--;
+                          if (widget.game.playerColorIndex < 0) {
+                            widget.game.playerColorIndex =
+                                widget.game.playerColors.length - 1;
+                          }
+                        });
+                      },
+                      child: Transform.flip(
+                        flipX: true,
+                        child: SizedBox(
+                          width: 30,
+                          child: Image.asset('assets/images/arrow_button.png'),
+                        ),
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.only(left: 30, right: 30, top: 30),
+                      child: SizedBox(
+                        width: 100,
+                        height: 100,
+                        child: Image.asset(
+                          'assets/images/player_${playerColor}_off.png',
+                          gaplessPlayback: true,
+                          fit: BoxFit.fill,
+                        ),
+                      ),
+                    ),
+                    GestureDetector(
+                      onTap: () {
+                        widget.game.audioManager.playSound('click');
+                        setState(() {
+                          widget.game.playerColorIndex++;
+                          if (widget.game.playerColorIndex ==
+                              widget.game.playerColors.length) {
+                            widget.game.playerColorIndex = 0;
+                          }
+                        });
+                      },
+                      child: SizedBox(
+                        width: 30,
+                        child: Image.asset('assets/images/arrow_button.png'),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
                 GestureDetector(
                   onTap: () {
-                    widget.game.audioManager.playSound('click');
+                    widget.game.audioManager.playSound('start');
+                    widget.game.startGame();
                     setState(() {
-                      widget.game.playerColorIndex--;
-                      if (widget.game.playerColorIndex < 0) {
-                        widget.game.playerColorIndex =
-                            widget.game.playerColors.length - 1;
-                      }
-                    });
-                  },
-                  child: Transform.flip(
-                    flipX: true,
-                    child: SizedBox(
-                      width: 30,
-                      child: Image.asset('assets/images/arrow_button.png'),
-                    ),
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.only(left: 30, right: 30, top: 30),
-                  child: SizedBox(
-                    width: 100,
-                    height: 100, // Keep square aspect ratio
-                    child: Image.asset(
-                      'assets/images/player_${playerColor}_off.png',
-                      gaplessPlayback: true,
-                      fit: BoxFit.fill,
-                    ),
-                  ),
-                ),
-                GestureDetector(
-                  onTap: () {
-                    widget.game.audioManager.playSound('click');
-                    setState(() {
-                      widget.game.playerColorIndex++;
-                      if (widget.game.playerColorIndex ==
-                          widget.game.playerColors.length) {
-                        widget.game.playerColorIndex = 0;
-                      }
+                      _opacity = 0.0;
                     });
                   },
                   child: SizedBox(
-                    width: 30,
-                    child: Image.asset('assets/images/arrow_button.png'),
+                    width: 200,
+                    child: Image.asset('assets/images/start_button.png'),
+                  ),
+                ),
+                Expanded(
+                  child: Align(
+                    alignment: Alignment.bottomRight,
+                    child: Padding(
+                      padding: const EdgeInsets.all(10),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            onPressed: () {
+                              setState(() {
+                                widget.game.audioManager.toggleMusic();
+                              });
+                            },
+                            icon: Icon(
+                              widget.game.audioManager.musicEnabled
+                                  ? Icons.music_note_rounded
+                                  : Icons.music_off_rounded,
+                              color: widget.game.audioManager.musicEnabled
+                                  ? Colors.white
+                                  : Colors.grey,
+                              size: 30,
+                            ),
+                          ),
+                          IconButton(
+                            onPressed: () {
+                              setState(() {
+                                widget.game.audioManager.toggleSounds();
+                              });
+                            },
+                            icon: Icon(
+                              widget.game.audioManager.soundsEnabled
+                                  ? Icons.volume_up_rounded
+                                  : Icons.volume_off_rounded,
+                              color: widget.game.audioManager.soundsEnabled
+                                  ? Colors.white
+                                  : Colors.grey,
+                              size: 30,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
               ],
-            ),
-            const SizedBox(height: 10),
-            GestureDetector(
-              onTap: () {
-                widget.game.audioManager.playSound('start');
-                widget.game.startGame();
-                setState(() {
-                  _opacity = 0.0;
-                });
-              },
-              child: SizedBox(
-                width: 200,
-                child: Image.asset('assets/images/start_button.png'),
-              ),
-            ),
-            Expanded(
-              child: Align(
-                alignment: Alignment.bottomRight,
-                child: Padding(
-                  padding: const EdgeInsets.all(10),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      IconButton(
-                        onPressed: () {
-                          setState(() {
-                            widget.game.audioManager.toggleMusic();
-                          });
-                        },
-                        icon: Icon(
-                          widget.game.audioManager.musicEnabled
-                              ? Icons.music_note_rounded
-                              : Icons.music_off_rounded,
-                          color: widget.game.audioManager.musicEnabled
-                              ? Colors.white
-                              : Colors.grey,
-                          size: 30,
-                        ),
-                      ),
-                      IconButton(
-                        onPressed: () {
-                          setState(() {
-                            widget.game.audioManager.toggleSounds();
-                          });
-                        },
-                        icon: Icon(
-                          widget.game.audioManager.soundsEnabled
-                              ? Icons.volume_up_rounded
-                              : Icons.volume_off_rounded,
-                          color: widget.game.audioManager.soundsEnabled
-                              ? Colors.white
-                              : Colors.grey,
-                          size: 30,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
             ),
           ],
         ),
       ),
     );
+  }
+}
+
+// Widget tiện ích để đặt vị trí trong Stack
+class PositionImage extends StatelessWidget {
+  final double? top, right, bottom, left;
+  final Widget child;
+
+  const PositionImage({super.key, this.top, this.right, this.bottom, this.left, required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    return Positioned(top: top, right: right, bottom: bottom, left: left, child: child);
   }
 }

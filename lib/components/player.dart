@@ -4,10 +4,12 @@ import 'dart:ui';
 
 import 'package:cosmic_havoc/components/asteroid.dart';
 import 'package:cosmic_havoc/components/bomb.dart';
+import 'package:cosmic_havoc/components/boss_monster.dart';
 import 'package:cosmic_havoc/components/explosion.dart';
 import 'package:cosmic_havoc/components/laser.dart';
 import 'package:cosmic_havoc/components/monster.dart';
 import 'package:cosmic_havoc/components/monster_laser.dart';
+import 'package:cosmic_havoc/components/red_laser.dart';
 import 'package:cosmic_havoc/components/pickup.dart';
 import 'package:cosmic_havoc/components/shield.dart';
 import 'package:cosmic_havoc/my_game.dart';
@@ -23,21 +25,21 @@ class Player extends SpriteAnimationComponent
   double _elapsedFireTime = 0.0;
   final Vector2 _keyboardMovement = Vector2.zero();
   bool _isDestroyed = false;
+  bool isTransitioning = false; 
   final Random _random = Random();
   late Timer _explosionTimer;
   late Timer _laserPowerupTimer;
   Shield? activeShield;
   late String _color;
 
-  late Sprite _destructionSprite; // Store the destruction sprite
+  late Sprite _destructionSprite; 
 
-  // Health and Invincibility
   int lives = 3;
   bool _isInvincible = false;
   late Timer _invincibilityTimer;
 
   Player() {
-    _explosionTimer = Timer(0.1, onTick: _createRandomExplosion, repeat: true, autoStart: false);
+    _explosionTimer = Timer(0.15, onTick: _createRandomExplosion, repeat: true, autoStart: false);
     _laserPowerupTimer = Timer(10.0, autoStart: false);
     _invincibilityTimer = Timer(1.5, onTick: () => _isInvincible = false, autoStart: false);
   }
@@ -49,12 +51,8 @@ class Player extends SpriteAnimationComponent
   @override
   FutureOr<void> onLoad() async {
     _color = game.playerColors[game.playerColorIndex];
-
-    // FIX: Load images directly using loadSprite instead of fromCache
     final sprite1 = await game.loadSprite('player_${_color}_on0.png');
     final sprite2 = await game.loadSprite('player_${_color}_on1.png');
-    
-    // Pre-load destruction sprite
     _destructionSprite = await game.loadSprite('player_${_color}_off.png');
 
     animation = SpriteAnimation.spriteList(
@@ -78,19 +76,18 @@ class Player extends SpriteAnimationComponent
   @override
   void update(double dt) {
     super.update(dt);
-
     if (_isDestroyed) {
       _explosionTimer.update(dt);
       return;
     }
-
     _laserPowerupTimer.update(dt);
     _invincibilityTimer.update(dt);
 
-    final Vector2 movement = game.joystick.relativeDelta + _keyboardMovement;
-    position += movement.normalized() * 200 * dt;
-
-    _handleScreenBounds();
+    if (!isTransitioning) {
+      final Vector2 movement = game.joystick.relativeDelta + _keyboardMovement;
+      position += movement.normalized() * 200 * dt;
+      _handleScreenBounds();
+    }
 
     _elapsedFireTime += dt;
     if (_isShooting && _elapsedFireTime >= _fireCooldown) {
@@ -100,11 +97,8 @@ class Player extends SpriteAnimationComponent
   }
 
   void _handleScreenBounds() {
-    final double screenWidth = game.size.x;
-    final double screenHeight = game.size.y;
-
-    position.y = clampDouble(position.y, size.y / 2, screenHeight - size.y / 2);
-    position.x = clampDouble(position.x, size.x / 2, screenWidth - size.x / 2);
+    position.y = clampDouble(position.y, size.y / 2, game.size.y - size.y / 2);
+    position.x = clampDouble(position.x, size.x / 2, game.size.x - size.x / 2);
   }
 
   void startShooting() => _isShooting = true;
@@ -113,7 +107,6 @@ class Player extends SpriteAnimationComponent
   void _fireLaser() {
     game.audioManager.playSound('laser');
     game.add(Laser(position: position.clone() + Vector2(0, -size.y / 2)));
-
     if (_laserPowerupTimer.isRunning()) {
       game.add(Laser(position: position.clone() + Vector2(0, -size.y / 2), angle: 15 * degrees2Radians));
       game.add(Laser(position: position.clone() + Vector2(0, -size.y / 2), angle: -15 * degrees2Radians));
@@ -123,35 +116,24 @@ class Player extends SpriteAnimationComponent
   void _activateInvincibility() {
     _isInvincible = true;
     _invincibilityTimer.start();
-    
     add(OpacityEffect.fadeOut(
-      EffectController(duration: 0.1, alternate: true, repeatCount: 15),
+      EffectController(duration: 0.1, reverseDuration: 0.1, repeatCount: 7),
     ));
   }
 
   void _handleDestruction() {
     if (_isDestroyed) return;
     _isDestroyed = true;
-
-    // Use the pre-loaded sprite
-    animation = SpriteAnimation.spriteList(
-      [_destructionSprite],
-      stepTime: double.infinity,
-    );
-
-    add(OpacityEffect.fadeOut(EffectController(duration: 3.0), onComplete: () => _explosionTimer.stop()));
-    add(MoveEffect.by(Vector2(0, 200), EffectController(duration: 3.0)));
-    add(RemoveEffect(delay: 4.0, onComplete: game.playerDied));
-
+    animation = SpriteAnimation.spriteList([_destructionSprite], stepTime: double.infinity);
+    game.add(Explosion(position: position.clone(), explosionSize: size.x * 2, explosionType: ExplosionType.fire));
+    add(OpacityEffect.fadeOut(EffectController(duration: 2.0), onComplete: () => _explosionTimer.stop()));
+    add(MoveEffect.by(Vector2(0, 150), EffectController(duration: 2.0)));
+    add(RemoveEffect(delay: 2.5, onComplete: game.playerDied));
     _explosionTimer.start();
   }
 
   void _createRandomExplosion() {
-    final explosionPosition = Vector2(
-      position.x - size.x / 2 + _random.nextDouble() * size.x,
-      position.y - size.y / 2 + _random.nextDouble() * size.y,
-    );
-
+    final explosionPosition = Vector2(position.x - size.x / 2 + _random.nextDouble() * size.x, position.y - size.y / 2 + _random.nextDouble() * size.y);
     final explosionType = _random.nextBool() ? ExplosionType.smoke : ExplosionType.fire;
     game.add(Explosion(position: explosionPosition, explosionSize: size.x * 0.7, explosionType: explosionType));
   }
@@ -159,11 +141,10 @@ class Player extends SpriteAnimationComponent
   @override
   void onCollision(Set<Vector2> intersectionPoints, PositionComponent other) {
     super.onCollision(intersectionPoints, other);
-
-    if (_isDestroyed || _isInvincible) return;
+    if (_isDestroyed || _isInvincible || isTransitioning) return;
 
     bool hit = false;
-    if (other is Asteroid || other is Monster || other is MonsterLaser) {
+    if (other is Asteroid || other is Monster || other is MonsterLaser || other is RedLaser || other is BossMonster) {
         hit = true;
     }
 
@@ -181,23 +162,20 @@ class Player extends SpriteAnimationComponent
                _activateInvincibility();
             }
         }
-    }
-    else if (other is Pickup) {
+    } else if (other is Pickup) {
       game.audioManager.playSound('collect');
       other.removeFromParent();
       game.incrementScore(1);
-
       switch (other.pickupType) {
-        case PickupType.laser:
-          _laserPowerupTimer.start();
-          break;
-        case PickupType.bomb:
-          game.add(Bomb(position: position.clone()));
+        case PickupType.laser: _laserPowerupTimer.start(); break;
+        case PickupType.bomb: game.add(Bomb(position: position.clone())); break;
+        case PickupType.heart:
+          // Tăng 1 tim, giới hạn tối đa có thể là 5 hoặc tùy ý bạn
+          lives++;
+          game.updatePlayerHealth(lives);
           break;
         case PickupType.shield:
-          if (activeShield != null) {
-            activeShield!.removeFromParent();
-          }
+          if (activeShield != null) activeShield!.removeFromParent();
           activeShield = Shield();
           add(activeShield!);
           break;

@@ -3,6 +3,8 @@ import 'package:cosmic_havoc/overlays/game_over_overlay.dart';
 import 'package:cosmic_havoc/overlays/title_overlay.dart';
 import 'package:cosmic_havoc/overlays/pause_menu.dart';
 import 'package:cosmic_havoc/overlays/countdown_overlay.dart';
+import 'package:cosmic_havoc/overlays/instructions_overlay.dart';
+import 'package:cosmic_havoc/overlays/victory_overlay.dart';
 import 'package:flame/game.dart';
 import 'package:flutter/material.dart';
 
@@ -20,6 +22,8 @@ void main() {
             'Title': (context, MyGame game) => TitleOverlay(game: game),
             'PauseMenu': (context, MyGame game) => PauseMenu(game: game),
             'Countdown': (context, MyGame game) => CountdownOverlay(game: game),
+            'Instructions': (context, MyGame game) => InstructionsOverlay(game: game),
+            'Victory': (context, MyGame game) => VictoryOverlay(game: game),
           },
           initialActiveOverlays: const ['Title'],
         ),

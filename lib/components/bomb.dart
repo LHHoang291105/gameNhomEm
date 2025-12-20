@@ -1,6 +1,8 @@
 import 'dart:async';
 
 import 'package:cosmic_havoc/components/asteroid.dart';
+import 'package:cosmic_havoc/components/monster.dart';
+import 'package:cosmic_havoc/components/boss_monster.dart';
 import 'package:cosmic_havoc/my_game.dart';
 import 'package:flame/collisions.dart';
 import 'package:flame/components.dart';
@@ -13,7 +15,7 @@ class Bomb extends SpriteComponent
       : super(
           size: Vector2.all(1),
           anchor: Anchor.center,
-          priority: -1,
+          priority: 20, 
         );
 
   @override
@@ -47,6 +49,11 @@ class Bomb extends SpriteComponent
 
     if (other is Asteroid) {
       other.takeDamage();
+    } else if (other is Monster) {
+      other.takeDamage();
+    } else if (other is BossMonster) {
+      // Bom gây 10 sát thương cho Boss
+      other.takeDamage(amount: 10);
     }
   }
 }
