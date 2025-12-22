@@ -66,7 +66,8 @@ class BossMonster extends SpriteAnimationComponent with HasGameReference<MyGame>
   void _createHealthBar() {
     final healthBarBg = RectangleComponent(
       size: Vector2(250, 15),
-      position: Vector2(size.x / 2, size.y + 40),
+      // Sửa vị trí thanh máu lên trên
+      position: Vector2(size.x / 2, -30),
       anchor: Anchor.center,
       paint: Paint()..color = Colors.grey.withOpacity(0.5),
     );
@@ -203,6 +204,10 @@ class BossMonster extends SpriteAnimationComponent with HasGameReference<MyGame>
       removeFromParent();
       _explode();
     }
+  }
+
+  void takeBombDamage(int damage) {
+    takeDamage(amount: damage);
   }
 
   void _dropRandomPickup() {

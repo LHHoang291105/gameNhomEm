@@ -23,6 +23,8 @@ class _CountdownOverlayState extends State<CountdownOverlay> {
 
   void _startCountdown() {
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) return; // Kiểm tra xem widget còn tồn tại không
+
       setState(() {
         _count--;
       });
@@ -30,6 +32,8 @@ class _CountdownOverlayState extends State<CountdownOverlay> {
       if (_count <= 0) {
         _timer?.cancel();
         widget.game.overlays.remove('Countdown');
+        // SỬA LỖI: Thêm dòng này để bắt đầu game
+        widget.game.startGame(); 
         widget.game.resumeEngine();
       }
     });
@@ -45,7 +49,8 @@ class _CountdownOverlayState extends State<CountdownOverlay> {
   Widget build(BuildContext context) {
     return Center(
       child: Text(
-        '$_count',
+        // Hiển thị "GO!" thay vì 0
+        _count > 0 ? '$_count' : 'GO!',
         style: const TextStyle(
           fontSize: 80,
           color: Colors.white,

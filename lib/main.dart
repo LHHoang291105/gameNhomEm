@@ -1,14 +1,22 @@
 import 'package:cosmic_havoc/my_game.dart';
 import 'package:cosmic_havoc/overlays/game_over_overlay.dart';
+import 'package:cosmic_havoc/overlays/leaderboard_overlay.dart';
+import 'package:cosmic_havoc/overlays/loading_overlay.dart'; // Import màn hình chờ
+import 'package:cosmic_havoc/overlays/login_overlay.dart';
+import 'package:cosmic_havoc/overlays/nickname_overlay.dart';
 import 'package:cosmic_havoc/overlays/title_overlay.dart';
 import 'package:cosmic_havoc/overlays/pause_menu.dart';
 import 'package:cosmic_havoc/overlays/countdown_overlay.dart';
 import 'package:cosmic_havoc/overlays/instructions_overlay.dart';
 import 'package:cosmic_havoc/overlays/victory_overlay.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flame/game.dart';
 import 'package:flutter/material.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp();
+
   final MyGame game = MyGame();
 
   runApp(
@@ -17,15 +25,20 @@ void main() {
       home: Scaffold(
         body: GameWidget(
           game: game,
+          // SỬA LỖI: Hiển thị màn hình chờ ngay lập tức
+          initialActiveOverlays: const ['Loading'], 
           overlayBuilderMap: {
+            'Loading': (context, MyGame game) => const LoadingOverlay(), // Đăng ký màn hình chờ
             'GameOver': (context, MyGame game) => GameOverOverlay(game: game),
             'Title': (context, MyGame game) => TitleOverlay(game: game),
             'PauseMenu': (context, MyGame game) => PauseMenu(game: game),
             'Countdown': (context, MyGame game) => CountdownOverlay(game: game),
             'Instructions': (context, MyGame game) => InstructionsOverlay(game: game),
             'Victory': (context, MyGame game) => VictoryOverlay(game: game),
+            'Login': (context, MyGame game) => LoginOverlay(game: game),
+            'Nickname': (context, MyGame game) => NicknameOverlay(game: game),
+            'Leaderboard': (context, MyGame game) => LeaderboardOverlay(game: game),
           },
-          initialActiveOverlays: const ['Title'],
         ),
       ),
     ),

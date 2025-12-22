@@ -21,13 +21,16 @@ class Asteroid extends SpriteComponent with HasGameReference<MyGame> {
   bool _isKnockedback = false;
   late int _asteroidType;
 
-  Asteroid({required super.position, double size = _maxSize})
-      : super(
+  final bool isFragment;
+
+  Asteroid({required super.position, double size = _maxSize, Vector2? initialVelocity})
+      : isFragment = initialVelocity != null,
+        super(
           size: Vector2.all(size),
           anchor: Anchor.center,
           priority: -1,
         ) {
-    _velocity = _generateVelocity();
+    _velocity = initialVelocity ?? _generateVelocity();
     _originalVelocity.setFrom(_velocity);
     _spinSpeed = _random.nextDouble() * 1.0 - 0.5;
 
@@ -41,15 +44,16 @@ class Asteroid extends SpriteComponent with HasGameReference<MyGame> {
   @override
   void onMount() {
     super.onMount();
-    // This is a failsafe. If an asteroid is somehow created on-screen,
-    // this moves it to the top to ensure it always flies in from the top.
-    if (position.y > 0) {
+    // This is a failsafe for large asteroids spawned by the spawner.
+    // Fragments (smaller asteroids) are allowed to spawn on-screen.
+    if (!isFragment && position.y > 0) {
       position.y = -size.y / 2;
     }
   }
 
   @override
   FutureOr<void> onLoad() async {
+    // SỬA LỖI: Xóa bỏ ký tự \ sai trong tên file
     sprite = await game.loadSprite('asteroid$_asteroidType.png');
     return super.onLoad();
   }
@@ -91,11 +95,37 @@ class Asteroid extends SpriteComponent with HasGameReference<MyGame> {
       game.incrementScore(2);
       removeFromParent();
       _createExplosion();
+      _maybeSpawnSmallerAsteroids();
       _maybeDropPickup();
     } else {
       game.incrementScore(1);
       _flashWhite();
       _applyKnockback();
+    }
+  }
+
+  void _maybeSpawnSmallerAsteroids() {
+    if (game.currentLevel == 1 &&
+        game.distanceTraveled >= 5000 &&
+        game.distanceTraveled <= 12000 &&
+        size.x > _maxSize / 2) {
+      int numberOfSmallerAsteroids = _random.nextInt(4);
+
+      for (int i = 0; i < numberOfSmallerAsteroids; i++) {
+        final newSize = size.x / 2;
+        if (newSize < 25) continue;
+
+        final newVelocity = Vector2(
+          (_random.nextDouble() - 0.5) * 150,
+          (_random.nextDouble() * 100) + 75,
+        );
+
+        final newAsteroid = Asteroid(
+            position: position.clone(),
+            size: newSize,
+            initialVelocity: newVelocity);
+        game.add(newAsteroid);
+      }
     }
   }
 

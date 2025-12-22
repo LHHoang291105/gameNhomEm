@@ -16,15 +16,13 @@ class _TitleOverlayState extends State<TitleOverlay> {
   @override
   void initState() {
     super.initState();
-
-    Future.delayed(
-      const Duration(milliseconds: 0),
-      () {
+    Future.delayed(const Duration(milliseconds: 100), () {
+      if (mounted) {
         setState(() {
           _opacity = 1.0;
         });
-      },
-    );
+      }
+    });
   }
 
   @override
@@ -44,7 +42,25 @@ class _TitleOverlayState extends State<TitleOverlay> {
         alignment: Alignment.topCenter,
         child: Stack(
           children: [
-            // Nút Hướng dẫn (Dấu chấm than) ở góc trên bên phải
+            // Nút Đăng xuất (hiện khi online)
+            if (widget.game.isOnline)
+              PositionImage(
+                top: 50,
+                left: 20,
+                child: IconButton(
+                  onPressed: () {
+                    widget.game.audioManager.playSound('click');
+                    widget.game.logout();
+                  },
+                  icon: const Icon(
+                    Icons.logout,
+                    color: Colors.white,
+                    size: 30,
+                  ),
+                ),
+              ),
+
+            // Nút Hướng dẫn
             PositionImage(
               top: 50,
               right: 20,
@@ -132,7 +148,8 @@ class _TitleOverlayState extends State<TitleOverlay> {
                 GestureDetector(
                   onTap: () {
                     widget.game.audioManager.playSound('start');
-                    widget.game.startGame();
+                    // Hiển thị màn hình đếm ngược thay vì bắt đầu ngay
+                    widget.game.overlays.add('Countdown');
                     setState(() {
                       _opacity = 0.0;
                     });
@@ -142,6 +159,26 @@ class _TitleOverlayState extends State<TitleOverlay> {
                     child: Image.asset('assets/images/start_button.png'),
                   ),
                 ),
+                const SizedBox(height: 20),
+
+                // Nút Bảng Xếp Hạng (hiện khi online)
+                if (widget.game.isOnline)
+                  GestureDetector(
+                    onTap: () {
+                      widget.game.audioManager.playSound('click');
+                      widget.game.showLeaderboard();
+                    },
+                    child: const Text(
+                      'Bảng Xếp Hạng',
+                      style: TextStyle(
+                        fontSize: 24,
+                        color: Colors.cyanAccent,
+                        fontWeight: FontWeight.bold,
+                        shadows: [Shadow(blurRadius: 10, color: Colors.cyan)],
+                      ),
+                    ),
+                  ),
+
                 Expanded(
                   child: Align(
                     alignment: Alignment.bottomRight,

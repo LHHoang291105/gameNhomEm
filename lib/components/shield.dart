@@ -1,6 +1,10 @@
 import 'dart:async';
 
 import 'package:cosmic_havoc/components/asteroid.dart';
+import 'package:cosmic_havoc/components/boss_monster.dart';
+import 'package:cosmic_havoc/components/monster.dart';
+import 'package:cosmic_havoc/components/monster_laser.dart';
+import 'package:cosmic_havoc/components/red_laser.dart';
 import 'package:cosmic_havoc/my_game.dart';
 import 'package:flame/collisions.dart';
 import 'package:flame/components.dart';
@@ -30,18 +34,6 @@ class Shield extends SpriteComponent
     );
     add(pulsatingEffect);
 
-    final OpacityEffect fadeOutEffect = OpacityEffect.fadeOut(
-      EffectController(
-        duration: 2.0,
-        startDelay: 3.0,
-      ),
-      onComplete: () {
-        removeFromParent();
-        game.player.activeShield = null;
-      },
-    );
-    add(fadeOutEffect);
-
     return super.onLoad();
   }
 
@@ -49,8 +41,18 @@ class Shield extends SpriteComponent
   void onCollision(Set<Vector2> intersectionPoints, PositionComponent other) {
     super.onCollision(intersectionPoints, other);
 
-    if (other is Asteroid) {
-      other.takeDamage();
+    if (other is Asteroid || other is Monster || other is MonsterLaser || other is RedLaser || other is BossMonster) {
+      if (other is Asteroid) {
+        other.takeDamage();
+      } else if (other is Monster) {
+        other.takeDamage();
+      } else if (other is MonsterLaser) {
+        other.removeFromParent();
+      } else if (other is RedLaser) {
+        other.removeFromParent();
+      } else if (other is BossMonster) {
+        // Shield doesn't destroy the boss, but could do minor damage or nothing
+      }
     }
   }
 }

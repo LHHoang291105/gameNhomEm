@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "52286156112",
+    "project_id": "gamenhomem-f5d60",
+    "storage_bucket": "gamenhomem-f5d60.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:52286156112:android:181576e743bca02d231055",
+        "android_client_info": {
+          "package_name": "com.sweatercatdesigns.cosmic_havoc"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "52286156112-4lg49ve8s04gt911faqcrb6ik1ah1rfj.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.sweatercatdesigns.cosmic_havoc",
+            "certificate_hash": "2e14e6e94b8c7bca6505ecaca38e62712b66c816"
+          }
+        },
+        {
+          "client_id": "52286156112-3rin6p7anrh4rv4bc19vejublabkuueh.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDzknl6ui0TSix_SMw1wu1IElWTOTTMf3M"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "52286156112-3rin6p7anrh4rv4bc19vejublabkuueh.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

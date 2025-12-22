@@ -36,8 +36,8 @@ class Monster extends SpriteAnimationComponent with HasGameReference<MyGame> {
       minFallSpeed = 70.0;
       maxFallSpeedAdd = 100.0;
     } else if (game.currentLevel == 3) {
-      minFallSpeed = 100.0;
-      maxFallSpeedAdd = 120.0;
+      minFallSpeed = 80.0;
+      maxFallSpeedAdd = 110.0;
     }
     
     final randomFallSpeed = minFallSpeed + _random.nextDouble() * maxFallSpeedAdd;
@@ -45,7 +45,7 @@ class Monster extends SpriteAnimationComponent with HasGameReference<MyGame> {
 
     if (game.currentLevel >= 2) {
       _amplitude = 40 + _random.nextDouble() * 60;
-      _frequency = 0.8 + _random.nextDouble() * 1.2;
+      _frequency = 1 + _random.nextDouble() * 1.4;
       _time = _random.nextDouble() * pi * 2;
     }
 

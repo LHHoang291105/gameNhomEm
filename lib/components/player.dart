@@ -29,6 +29,7 @@ class Player extends SpriteAnimationComponent
   final Random _random = Random();
   late Timer _explosionTimer;
   late Timer _laserPowerupTimer;
+  late Timer _shieldPowerupTimer;
   Shield? activeShield;
   late String _color;
 
@@ -40,7 +41,8 @@ class Player extends SpriteAnimationComponent
 
   Player() {
     _explosionTimer = Timer(0.15, onTick: _createRandomExplosion, repeat: true, autoStart: false);
-    _laserPowerupTimer = Timer(10.0, autoStart: false);
+    _laserPowerupTimer = Timer(4.0, onTick: () {}, autoStart: false);
+    _shieldPowerupTimer = Timer(4.0, onTick: _deactivateShield, autoStart: false);
     _invincibilityTimer = Timer(1.5, onTick: () => _isInvincible = false, autoStart: false);
   }
   
@@ -81,6 +83,7 @@ class Player extends SpriteAnimationComponent
       return;
     }
     _laserPowerupTimer.update(dt);
+    _shieldPowerupTimer.update(dt);
     _invincibilityTimer.update(dt);
 
     if (!isTransitioning) {
@@ -138,46 +141,54 @@ class Player extends SpriteAnimationComponent
     game.add(Explosion(position: explosionPosition, explosionSize: size.x * 0.7, explosionType: explosionType));
   }
 
+  void _deactivateShield() {
+    if (activeShield != null) {
+      activeShield!.removeFromParent();
+      activeShield = null;
+    }
+  }
+
   @override
   void onCollision(Set<Vector2> intersectionPoints, PositionComponent other) {
     super.onCollision(intersectionPoints, other);
-    if (_isDestroyed || _isInvincible || isTransitioning) return;
+    if (_isDestroyed || isTransitioning) return;
 
-    bool hit = false;
     if (other is Asteroid || other is Monster || other is MonsterLaser || other is RedLaser || other is BossMonster) {
-        hit = true;
-    }
+      if (_isInvincible || hasShield) return;
 
-    if(hit) {
-        if (activeShield != null) {
-            activeShield!.removeFromParent();
-            activeShield = null;
-            _activateInvincibility();
-        } else {
-            lives--;
-            game.updatePlayerHealth(lives);
-            if (lives <= 0) {
-               _handleDestruction();
-            } else {
-               _activateInvincibility();
-            }
-        }
+      lives--;
+      game.updatePlayerHealth(lives);
+      if (lives <= 0) {
+        _handleDestruction();
+      } else {
+        _activateInvincibility();
+      }
     } else if (other is Pickup) {
       game.audioManager.playSound('collect');
       other.removeFromParent();
       game.incrementScore(1);
       switch (other.pickupType) {
-        case PickupType.laser: _laserPowerupTimer.start(); break;
-        case PickupType.bomb: game.add(Bomb(position: position.clone())); break;
+        case PickupType.laser: 
+          _laserPowerupTimer.start(); 
+          break;
+        case PickupType.bomb:
+          final boss = game.children.whereType<BossMonster>().firstOrNull;
+          if (boss != null) {
+            boss.takeDamage(amount: 10);
+          } else {
+            game.add(Bomb(position: position.clone()));
+          }
+          break;
         case PickupType.heart:
-          // Tăng 1 tim, giới hạn tối đa có thể là 5 hoặc tùy ý bạn
           lives++;
           game.updatePlayerHealth(lives);
           break;
         case PickupType.shield:
-          if (activeShield != null) activeShield!.removeFromParent();
-          activeShield = Shield();
-          add(activeShield!);
+          if (!hasShield) {
+            activeShield = Shield();
+            add(activeShield!);
+          }
+          _shieldPowerupTimer.start();
           break;
       }
     }
