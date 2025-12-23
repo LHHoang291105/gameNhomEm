@@ -1,10 +1,10 @@
 import 'dart:async';
 import 'dart:math';
 
-import 'package:cosmic_havoc/components/explosion.dart';
-import 'package:cosmic_havoc/components/pickup.dart';
-import 'package:cosmic_havoc/components/red_laser.dart';
-import 'package:cosmic_havoc/my_game.dart';
+import 'package:Phoenix_Blast/components/explosion.dart';
+import 'package:Phoenix_Blast/components/pickup.dart';
+import 'package:Phoenix_Blast/components/red_laser.dart';
+import 'package:Phoenix_Blast/my_game.dart';
 import 'package:flame/collisions.dart';
 import 'package:flame/components.dart';
 import 'package:flame/effects.dart';
@@ -66,7 +66,6 @@ class BossMonster extends SpriteAnimationComponent with HasGameReference<MyGame>
   void _createHealthBar() {
     final healthBarBg = RectangleComponent(
       size: Vector2(250, 15),
-      // Sửa vị trí thanh máu lên trên
       position: Vector2(size.x / 2, -30),
       anchor: Anchor.center,
       paint: Paint()..color = Colors.grey.withOpacity(0.5),
@@ -118,7 +117,6 @@ class BossMonster extends SpriteAnimationComponent with HasGameReference<MyGame>
     _isMidPhaseTransitioning = true;
     _canShoot = false;
     
-    // Boss tạm dừng bắn 5 giây
     Future.delayed(const Duration(seconds: 5), () {
       if (!isMounted) return;
       _isMidPhaseTransitioning = false;

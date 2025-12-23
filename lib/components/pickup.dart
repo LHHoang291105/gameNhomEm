@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:cosmic_havoc/my_game.dart';
+import 'package:Phoenix_Blast/my_game.dart';
 import 'package:flame/collisions.dart';
 import 'package:flame/components.dart';
 import 'package:flame/effects.dart';
@@ -40,7 +40,6 @@ class Pickup extends SpriteComponent with HasGameReference<MyGame> {
 
     position.y += 300 * dt;
 
-    // remove the pickup from the game if it goes below the bottom
     if (position.y > game.size.y + size.y / 2) {
       removeFromParent();
     }

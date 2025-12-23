@@ -1,9 +1,9 @@
 import 'dart:async';
 import 'dart:math';
 
-import 'package:cosmic_havoc/components/explosion.dart';
-import 'package:cosmic_havoc/components/pickup.dart';
-import 'package:cosmic_havoc/my_game.dart';
+import 'package:Phoenix_Blast/components/explosion.dart';
+import 'package:Phoenix_Blast/components/pickup.dart';
+import 'package:Phoenix_Blast/my_game.dart';
 import 'package:flame/collisions.dart';
 import 'package:flame/components.dart';
 import 'package:flame/effects.dart';
@@ -44,8 +44,6 @@ class Asteroid extends SpriteComponent with HasGameReference<MyGame> {
   @override
   void onMount() {
     super.onMount();
-    // This is a failsafe for large asteroids spawned by the spawner.
-    // Fragments (smaller asteroids) are allowed to spawn on-screen.
     if (!isFragment && position.y > 0) {
       position.y = -size.y / 2;
     }
@@ -53,7 +51,6 @@ class Asteroid extends SpriteComponent with HasGameReference<MyGame> {
 
   @override
   FutureOr<void> onLoad() async {
-    // SỬA LỖI: Xóa bỏ ký tự \ sai trong tên file
     sprite = await game.loadSprite('asteroid$_asteroidType.png');
     return super.onLoad();
   }
@@ -75,15 +72,15 @@ class Asteroid extends SpriteComponent with HasGameReference<MyGame> {
   }
 
   void _handleScreenBounds() {
-    if (position.y > game.size.y + size.y) {
+    // Xóa ngay nếu trôi quá đáy màn hình 100 pixel
+    if (position.y > game.size.y + 100) {
       removeFromParent();
+      return;
     }
 
-    final double screenWidth = game.size.x;
-    if (position.x < -size.x / 2) {
-      position.x = screenWidth + size.x / 2;
-    } else if (position.x > screenWidth + size.x / 2) {
-      position.x = -size.x / 2;
+    // Giới hạn biên ngang: nếu bay quá xa sang 2 bên cũng dọn dẹp (đặc biệt cho mảnh vỡ)
+    if (position.x < -200 || position.x > game.size.x + 200) {
+      removeFromParent();
     }
   }
 

@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:math';
-import 'package:cosmic_havoc/components/player.dart';
-import 'package:cosmic_havoc/my_game.dart';
+import 'package:Phoenix_Blast/components/player.dart';
+import 'package:Phoenix_Blast/my_game.dart';
 import 'package:flame/collisions.dart';
 import 'package:flame/components.dart';
 

@@ -1,5 +1,5 @@
-import 'package:cosmic_havoc/my_game.dart';
-import 'package:cosmic_havoc/overlays/countdown_overlay.dart';
+import 'package:Phoenix_Blast/my_game.dart';
+import 'package:Phoenix_Blast/overlays/countdown_overlay.dart';
 import 'package:flutter/material.dart';
 
 class PauseMenu extends StatefulWidget {

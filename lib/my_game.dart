@@ -1,27 +1,27 @@
 import 'dart:async';
 import 'dart:math';
 
-import 'package:cosmic_havoc/components/asteroid.dart';
-import 'package:cosmic_havoc/components/audio_manager.dart';
-import 'package:cosmic_havoc/components/boss_monster.dart';
-import 'package:cosmic_havoc/components/bubble.dart';
-import 'package:cosmic_havoc/components/monster.dart';
-import 'package:cosmic_havoc/components/monster_laser.dart';
-import 'package:cosmic_havoc/components/laser.dart';
-import 'package:cosmic_havoc/components/red_laser.dart';
-import 'package:cosmic_havoc/components/pickup.dart';
-import 'package:cosmic_havoc/components/player.dart';
-import 'package:cosmic_havoc/components/red_dust.dart';
-import 'package:cosmic_havoc/components/shoot_button.dart';
-import 'package:cosmic_havoc/components/star.dart';
-import 'package:cosmic_havoc/services/firebase_service.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:Phoenix_Blast/components/asteroid.dart';
+import 'package:Phoenix_Blast/components/audio_manager.dart';
+import 'package:Phoenix_Blast/components/boss_monster.dart';
+import 'package:Phoenix_Blast/components/bubble.dart';
+import 'package:Phoenix_Blast/components/monster.dart';
+import 'package:Phoenix_Blast/components/monster_laser.dart';
+import 'package:Phoenix_Blast/components/laser.dart';
+import 'package:Phoenix_Blast/components/red_laser.dart';
+import 'package:Phoenix_Blast/components/pickup.dart';
+import 'package:Phoenix_Blast/components/player.dart';
+import 'package:Phoenix_Blast/components/red_dust.dart';
+import 'package:Phoenix_Blast/components/shoot_button.dart';
+import 'package:Phoenix_Blast/components/star.dart';
+import 'package:Phoenix_Blast/components/bomb.dart';
+import 'package:Phoenix_Blast/components/explosion.dart';
+import 'package:Phoenix_Blast/services/firebase_service.dart';
 import 'package:flame/components.dart';
 import 'package:flame/effects.dart';
 import 'package:flame/events.dart';
 import 'package:flame/flame.dart';
 import 'package:flame/game.dart';
-import 'package:flame/input.dart';
 import 'package:flutter/material.dart';
 
 class MyGame extends FlameGame
@@ -78,12 +78,43 @@ class MyGame extends FlameGame
     await Flame.device.fullScreen();
     await Flame.device.setPortrait();
 
-    await Future.wait([
-      loadSprite('joystick_knob.png').then((s) => _joystickKnobSprite = s),
-      loadSprite('joystick_background.png').then((s) => _joystickBackgroundSprite = s),
-      loadSprite('shield_pickup.png').then((s) => _shieldIconSprite = s),
-      loadSprite('laser_pickup.png').then((s) => _laserIconSprite = s),
+    // HIỆU NĂNG: Tải trước toàn bộ hình ảnh vào RAM để tránh giật lag khi spawn
+    await images.loadAll([
+      'joystick_knob.png',
+      'joystick_background.png',
+      'shield_pickup.png',
+      'laser_pickup.png',
+      'bomb_pickup.png',
+      'heart_pickup.png',
+      'laser.png',
+      'tiatim.png',
+      'tiaxanh.png',
+      'asteroid1.png',
+      'asteroid2.png',
+      'asteroid3.png',
+      'monster_saothuy1.png',
+      'monster_saothuy1.1.png',
+      'monster_saothuy3.png',
+      'monster_saothuy3.1.png',
+      'monster_saothuy3.2.png',
+      'monster_mini_sao_hoa_1.png',
+      'monster_mini_sao_hoa_1.1.png',
+      'monster_mini_sao_hoa_1.2.png',
+      'monster_mini_sao_hoa_2.png',
+      'monster_mini_sao_hoa_2.1.png',
+      'sao_thuy.png',
+      'sao_hoa.png',
+      'title.png',
+      'start_button.png',
+      'arrow_button.png',
+      'player_red_off.png',
+      'player_blue_off.png',
     ]);
+
+    _joystickKnobSprite = Sprite(images.fromCache('joystick_knob.png'));
+    _joystickBackgroundSprite = Sprite(images.fromCache('joystick_background.png'));
+    _shieldIconSprite = Sprite(images.fromCache('shield_pickup.png'));
+    _laserIconSprite = Sprite(images.fromCache('laser_pickup.png'));
 
     _safeTop = WidgetsBinding.instance.window.padding.top /
         WidgetsBinding.instance.window.devicePixelRatio;
@@ -278,6 +309,8 @@ class MyGame extends FlameGame
             c is MonsterLaser ||
             c is Laser ||
             c is RedLaser ||
+            c is Bomb ||
+            c is Explosion ||
             (c is RectangleComponent && c.priority == 100))
         .forEach((c) => c.removeFromParent());
 
@@ -442,8 +475,8 @@ class MyGame extends FlameGame
   void _createBubbleSpawner() {
     _bubbleSpawner = SpawnComponent.periodRange(
         factory: (index) => Bubble(),
-        minPeriod: 0.1,
-        maxPeriod: 0.3,
+        minPeriod: 0.5,
+        maxPeriod: 1.0,
         autoStart: true,
         selfPositioning: true);
     add(_bubbleSpawner!);
@@ -452,8 +485,8 @@ class MyGame extends FlameGame
   void _createRedDustSpawner() {
     _redDustSpawner = SpawnComponent.periodRange(
         factory: (index) => RedDust(),
-        minPeriod: 0.2,
-        maxPeriod: 0.5,
+        minPeriod: 0.6,
+        maxPeriod: 1.2,
         autoStart: true);
     add(_redDustSpawner!);
   }
@@ -464,13 +497,13 @@ class MyGame extends FlameGame
 
   void _createSaoThuyBackground() async {
     _background = SpriteComponent(
-        sprite: await loadSprite('sao_thuy.png'), size: size, priority: -100);
+        sprite: Sprite(images.fromCache('sao_thuy.png')), size: size, priority: -100);
     add(_background!);
   }
 
   void _createSaoHoaBackground() async {
     _background = SpriteComponent(
-        sprite: await loadSprite('sao_hoa.png'), size: size, priority: -100);
+        sprite: Sprite(images.fromCache('sao_hoa.png')), size: size, priority: -100);
     add(_background!);
   }
 

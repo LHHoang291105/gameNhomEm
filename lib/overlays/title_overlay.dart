@@ -1,4 +1,4 @@
-import 'package:cosmic_havoc/my_game.dart';
+import 'package:Phoenix_Blast/my_game.dart';
 import 'package:flutter/material.dart';
 
 class TitleOverlay extends StatefulWidget {
@@ -42,23 +42,31 @@ class _TitleOverlayState extends State<TitleOverlay> {
         alignment: Alignment.topCenter,
         child: Stack(
           children: [
-            // Nút Đăng xuất (hiện khi online)
-            if (widget.game.isOnline)
-              PositionImage(
-                top: 50,
-                left: 20,
-                child: IconButton(
-                  onPressed: () {
-                    widget.game.audioManager.playSound('click');
-                    widget.game.logout();
-                  },
-                  icon: const Icon(
-                    Icons.logout,
-                    color: Colors.white,
-                    size: 30,
-                  ),
+            // Nút Quay lại màn hình Đăng nhập (Thay cho nút logout cũ ở góc trên)
+            PositionImage(
+              top: 50,
+              left: 20,
+              child: IconButton(
+                onPressed: () {
+                  widget.game.audioManager.playSound('click');
+                  widget.game.logout(); // Hàm logout sẽ đưa về màn hình Login
+                },
+                icon: const Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.arrow_back_ios_new_rounded,
+                      color: Colors.white,
+                      size: 25,
+                    ),
+                    Text(
+                      'LOGOUT',
+                      style: TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.bold),
+                    )
+                  ],
                 ),
               ),
+            ),
 
             // Nút Hướng dẫn
             PositionImage(
@@ -148,7 +156,6 @@ class _TitleOverlayState extends State<TitleOverlay> {
                 GestureDetector(
                   onTap: () {
                     widget.game.audioManager.playSound('start');
-                    // Hiển thị màn hình đếm ngược thay vì bắt đầu ngay
                     widget.game.overlays.add('Countdown');
                     setState(() {
                       _opacity = 0.0;
@@ -161,7 +168,6 @@ class _TitleOverlayState extends State<TitleOverlay> {
                 ),
                 const SizedBox(height: 20),
 
-                // Nút Bảng Xếp Hạng (hiện khi online)
                 if (widget.game.isOnline)
                   GestureDetector(
                     onTap: () {
@@ -183,9 +189,9 @@ class _TitleOverlayState extends State<TitleOverlay> {
                   child: Align(
                     alignment: Alignment.bottomRight,
                     child: Padding(
-                      padding: const EdgeInsets.all(10),
+                      padding: const EdgeInsets.all(20),
                       child: Row(
-                        mainAxisSize: MainAxisSize.min,
+                        mainAxisAlignment: MainAxisAlignment.end, // Dồn về bên phải
                         children: [
                           IconButton(
                             onPressed: () {
@@ -233,7 +239,6 @@ class _TitleOverlayState extends State<TitleOverlay> {
   }
 }
 
-// Widget tiện ích để đặt vị trí trong Stack
 class PositionImage extends StatelessWidget {
   final double? top, right, bottom, left;
   final Widget child;

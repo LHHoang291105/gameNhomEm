@@ -1,10 +1,10 @@
 import 'dart:async';
 import 'dart:math';
 
-import 'package:cosmic_havoc/components/asteroid.dart';
-import 'package:cosmic_havoc/components/monster.dart';
-import 'package:cosmic_havoc/components/boss_monster.dart';
-import 'package:cosmic_havoc/my_game.dart';
+import 'package:Phoenix_Blast/components/asteroid.dart';
+import 'package:Phoenix_Blast/components/monster.dart';
+import 'package:Phoenix_Blast/components/boss_monster.dart';
+import 'package:Phoenix_Blast/my_game.dart';
 import 'package:flame/collisions.dart';
 import 'package:flame/components.dart';
 

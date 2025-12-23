@@ -1,7 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import 'package:cosmic_havoc/my_game.dart';
-import 'package:cosmic_havoc/services/firebase_service.dart';
+import 'package:Phoenix_Blast/my_game.dart';
+import 'package:Phoenix_Blast/services/firebase_service.dart';
 
 class LeaderboardOverlay extends StatelessWidget {
   final MyGame game;

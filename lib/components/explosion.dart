@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:math';
 
-import 'package:cosmic_havoc/my_game.dart';
+import 'package:Phoenix_Blast/my_game.dart';
 import 'package:flame/components.dart';
 import 'package:flame/effects.dart';
 import 'package:flame/particles.dart';
@@ -76,7 +76,7 @@ class Explosion extends PositionComponent with HasGameReference<MyGame> {
 
     final ParticleSystemComponent particles = ParticleSystemComponent(
       particle: Particle.generate(
-        count: 8 + _random.nextInt(5),
+        count: 5 + _random.nextInt(3), // Tối ưu giảm số lượng hạt
         generator: (index) {
           return MovingParticle(
             child: CircleParticle(
@@ -90,7 +90,7 @@ class Explosion extends PositionComponent with HasGameReference<MyGame> {
               (_random.nextDouble() - 0.5) * explosionSize * 2,
               (_random.nextDouble() - 0.5) * explosionSize * 2,
             ),
-            lifespan: 0.5 + _random.nextDouble() * 0.5,
+            lifespan: 0.3 + _random.nextDouble() * 0.4, // Giảm lifespan để mượt hơn
           );
         },
       ),

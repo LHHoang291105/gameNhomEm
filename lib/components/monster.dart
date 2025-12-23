@@ -1,11 +1,11 @@
 import 'dart:async';
 import 'dart:math';
 
-import 'package:cosmic_havoc/components/explosion.dart';
-import 'package:cosmic_havoc/components/monster_laser.dart';
-import 'package:cosmic_havoc/components/pickup.dart';
-import 'package:cosmic_havoc/components/player.dart';
-import 'package:cosmic_havoc/my_game.dart';
+import 'package:Phoenix_Blast/components/explosion.dart';
+import 'package:Phoenix_Blast/components/monster_laser.dart';
+import 'package:Phoenix_Blast/components/pickup.dart';
+import 'package:Phoenix_Blast/components/player.dart';
+import 'package:Phoenix_Blast/my_game.dart';
 import 'package:flame/collisions.dart';
 import 'package:flame/components.dart';
 
@@ -30,13 +30,13 @@ class Monster extends SpriteAnimationComponent with HasGameReference<MyGame> {
     position.y = -250 - _random.nextDouble() * 200;
     
     // Tăng tốc độ rơi theo level
-    double minFallSpeed = 50.0;
-    double maxFallSpeedAdd = 70.0;
+    double minFallSpeed = 40.0;
+    double maxFallSpeedAdd = 50.0;
     if (game.currentLevel == 2) {
       minFallSpeed = 70.0;
       maxFallSpeedAdd = 100.0;
     } else if (game.currentLevel == 3) {
-      minFallSpeed = 80.0;
+      minFallSpeed = 70.0;
       maxFallSpeedAdd = 110.0;
     }
     

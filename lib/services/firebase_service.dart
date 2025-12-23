@@ -1,7 +1,7 @@
-
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:flutter/foundation.dart';
 
 class FirebaseService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -12,9 +12,14 @@ class FirebaseService {
 
   Future<User?> signInWithGoogle() async {
     try {
+      debugPrint("Bắt đầu đăng nhập Google...");
+      
+      // Đảm bảo đã đăng xuất trước đó để hiển thị hộp thoại chọn tài khoản
+      await _googleSignIn.signOut();
+      
       final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
       if (googleUser == null) {
-        // Người dùng đã hủy đăng nhập
+        debugPrint("Người dùng đã hủy đăng nhập.");
         return null;
       }
 
@@ -25,22 +30,33 @@ class FirebaseService {
       );
 
       final UserCredential userCredential = await _auth.signInWithCredential(credential);
+      debugPrint("Đăng nhập thành công: ${userCredential.user?.displayName}");
       return userCredential.user;
     } catch (e) {
-      print("Lỗi khi đăng nhập với Google: $e");
+      debugPrint("Lỗi khi đăng nhập với Google: $e");
+      // Nếu lỗi là 12500 hoặc 10, thường là do thiếu SHA-1 hoặc sai cấu hình Firebase console
       return null;
     }
   }
 
   Future<void> signOut() async {
-    await _googleSignIn.signOut();
-    await _auth.signOut();
+    try {
+      await _googleSignIn.signOut();
+      await _auth.signOut();
+    } catch (e) {
+      debugPrint("Lỗi khi đăng xuất: $e");
+    }
   }
 
   Future<bool> hasNickname() async {
     if (currentUser == null) return false;
-    final doc = await _firestore.collection('users').doc(currentUser!.uid).get();
-    return doc.exists && doc.data()!.containsKey('nickname');
+    try {
+      final doc = await _firestore.collection('users').doc(currentUser!.uid).get();
+      return doc.exists && doc.data()!.containsKey('nickname');
+    } catch (e) {
+      debugPrint("Lỗi kiểm tra nickname: $e");
+      return false;
+    }
   }
 
   Future<void> setNickname(String nickname) async {
@@ -60,15 +76,19 @@ class FirebaseService {
   Future<void> saveScore(int score) async {
     if (currentUser == null) return;
     
-    String? nickname = await getNickname();
-    if (nickname == null) return;
+    try {
+      String? nickname = await getNickname();
+      if (nickname == null) return;
 
-    await _firestore.collection('scores').add({
-      'userId': currentUser!.uid,
-      'nickname': nickname,
-      'score': score,
-      'timestamp': FieldValue.serverTimestamp(),
-    });
+      await _firestore.collection('scores').add({
+        'userId': currentUser!.uid,
+        'nickname': nickname,
+        'score': score,
+        'timestamp': FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      debugPrint("Lỗi lưu điểm: $e");
+    }
   }
 
   Stream<QuerySnapshot> getTopScores() {

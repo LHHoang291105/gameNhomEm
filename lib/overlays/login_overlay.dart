@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:cosmic_havoc/my_game.dart';
-import 'package:cosmic_havoc/services/firebase_service.dart';
+import 'package:Phoenix_Blast/my_game.dart';
+import 'package:Phoenix_Blast/services/firebase_service.dart';
 
 class LoginOverlay extends StatelessWidget {
   final MyGame game;
@@ -20,7 +20,7 @@ class LoginOverlay extends StatelessWidget {
             Icon(Icons.rocket_launch, size: 100, color: Colors.cyanAccent),
             SizedBox(height: 20),
             Text(
-              'Cosmic Havoc',
+              'Phoenix Blast',
               style: TextStyle(
                 fontSize: 48,
                 fontWeight: FontWeight.bold,
@@ -60,7 +60,7 @@ class LoginOverlay extends StatelessWidget {
                 game.startOffline();
               },
               child: Text(
-                'Chơi Offline',
+                'Chế độ khách',
                 style: TextStyle(color: Colors.white70, fontSize: 16),
               ),
             ),
