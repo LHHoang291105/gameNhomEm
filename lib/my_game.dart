@@ -5,6 +5,7 @@ import 'package:Phoenix_Blast/components/asteroid.dart';
 import 'package:Phoenix_Blast/components/audio_manager.dart';
 import 'package:Phoenix_Blast/components/boss_monster.dart';
 import 'package:Phoenix_Blast/components/bubble.dart';
+import 'package:Phoenix_Blast/components/coin.dart';
 import 'package:Phoenix_Blast/components/monster.dart';
 import 'package:Phoenix_Blast/components/monster_laser.dart';
 import 'package:Phoenix_Blast/components/laser.dart';
@@ -30,13 +31,14 @@ class MyGame extends FlameGame
   late JoystickComponent joystick;
   final Random _random = Random();
   ShootButton? _shootButton;
-  final List<String> playerColors = ['red', 'blue'];
-  int playerColorIndex = 0;
+  final List<String> playerSkins = ['vang', 'maybay'];
+  int playerSkinIndex = 0;
 
   late Sprite _joystickKnobSprite;
   late Sprite _joystickBackgroundSprite;
   late Sprite _shieldIconSprite;
   late Sprite _laserIconSprite;
+  late Sprite _coinSprite;
 
   SpawnComponent? _asteroidSpawner;
   SpawnComponent? _bubbleSpawner;
@@ -59,11 +61,21 @@ class MyGame extends FlameGame
   RectangleComponent? _progressBar;
   RectangleComponent? _progressFill;
   TextComponent? _healthDisplay;
+  TextComponent? _nicknameDisplay;
+  TextComponent? _sessionCoinDisplay;
+  SpriteComponent? _coinIcon;
   SpriteComponent? _shieldIcon;
   SpriteComponent? _laserIcon;
   TextComponent? _scoreDisplay;
   HamburgerMenuComponent? _menuBtn;
   int _score = 0;
+  int _totalCoins = 0;
+  int _sessionCoins = 0;
+
+  String? _nickname;
+  String? get nickname => _nickname;
+  int get totalCoins => _totalCoins;
+  int get sessionCoins => _sessionCoins;
 
   int get score => _score;
 
@@ -78,7 +90,6 @@ class MyGame extends FlameGame
     await Flame.device.fullScreen();
     await Flame.device.setPortrait();
 
-    // HIỆU NĂNG: Tải trước toàn bộ hình ảnh vào RAM để tránh giật lag khi spawn
     await images.loadAll([
       'joystick_knob.png',
       'joystick_background.png',
@@ -107,14 +118,25 @@ class MyGame extends FlameGame
       'title.png',
       'start_button.png',
       'arrow_button.png',
-      'player_red_off.png',
-      'player_blue_off.png',
+      'vang.png',
+      'vang1.png',
+      'vang2.png',
+      'vang3.png',
+      'maybay.png',
+      'maybay1.png',
+      'maybay2.png',
+      'coin.png',
+      'coin1.png',
+      'coin2.png',
+      'coin3.png',
     ]);
 
     _joystickKnobSprite = Sprite(images.fromCache('joystick_knob.png'));
-    _joystickBackgroundSprite = Sprite(images.fromCache('joystick_background.png'));
+    _joystickBackgroundSprite =
+        Sprite(images.fromCache('joystick_background.png'));
     _shieldIconSprite = Sprite(images.fromCache('shield_pickup.png'));
     _laserIconSprite = Sprite(images.fromCache('laser_pickup.png'));
+    _coinSprite = Sprite(images.fromCache('coin.png'));
 
     _safeTop = WidgetsBinding.instance.window.padding.top /
         WidgetsBinding.instance.window.devicePixelRatio;
@@ -131,6 +153,8 @@ class MyGame extends FlameGame
     if (_firebaseService.currentUser != null) {
       isOnline = true;
       if (await _firebaseService.hasNickname()) {
+        _nickname = await _firebaseService.getNickname();
+        _totalCoins = await _firebaseService.getCoins();
         showMainMenu();
       } else {
         overlays.add('Nickname');
@@ -150,6 +174,8 @@ class MyGame extends FlameGame
       overlays.remove('Loading');
       overlays.add('Nickname');
     } else {
+      _nickname = await _firebaseService.getNickname();
+      _totalCoins = await _firebaseService.getCoins();
       overlays.remove('Loading');
       showMainMenu();
     }
@@ -157,6 +183,8 @@ class MyGame extends FlameGame
 
   void startOffline() {
     isOnline = false;
+    _nickname = 'Offline';
+    _totalCoins = 0;
     overlays.remove('Login');
     showMainMenu();
   }
@@ -165,7 +193,7 @@ class MyGame extends FlameGame
     overlays.remove('Nickname');
     overlays.remove('Leaderboard');
     overlays.remove('Login');
-    overlays.remove('Loading'); 
+    overlays.remove('Loading');
     overlays.add('Title');
   }
 
@@ -177,11 +205,15 @@ class MyGame extends FlameGame
   void logout() async {
     await _firebaseService.signOut();
     isOnline = false;
+    _nickname = null;
+    _nicknameDisplay = null;
+    _totalCoins = 0;
+    _sessionCoins = 0;
     overlays.clear();
     overlays.add('Login');
   }
 
-    @override
+  @override
   void update(double dt) {
     super.update(dt);
 
@@ -233,12 +265,12 @@ class MyGame extends FlameGame
           spawnRate = 0.8 + _random.nextDouble() * 0.8;
         }
       } else {
-        spawnRate = 0.6 + _random.nextDouble() * 0.8;
+        spawnRate = 0.8 + _random.nextDouble() * 1.0; // Giảm tần suất spawn ở màn 3
       }
 
       add(Monster(position: _generateSpawnPosition()));
 
-      if (currentLevel == 3 && _random.nextDouble() < 0.4) {
+      if (currentLevel == 3 && _random.nextDouble() < 0.3) { // Giảm xác suất spawn thêm quái
         add(Monster(position: _generateSpawnPosition()));
       }
 
@@ -265,13 +297,23 @@ class MyGame extends FlameGame
     }));
   }
 
-  void victory() {
+  void victory() async {
     if (isOnline) {
-      _firebaseService.saveScore(score);
+      await _firebaseService.onGameEnd(
+        isWin: true,
+        score: _score,
+        coinsEarned: _sessionCoins,
+      );
+
+      // cập nhật local để UI đúng ngay
+      _totalCoins += _sessionCoins;
     }
+
     pauseEngine();
     overlays.add('Victory');
   }
+
+
 
   void _updatePowerupsDisplay() {
     if (_shieldIcon == null || _laserIcon == null) return;
@@ -292,6 +334,7 @@ class MyGame extends FlameGame
     _bossSpawned = false;
     _monsterSpawnTimer = 0;
     _score = 0;
+    _sessionCoins = 0;
     await _createPlayer();
     _createUI();
     _setupLevel();
@@ -311,6 +354,7 @@ class MyGame extends FlameGame
             c is RedLaser ||
             c is Bomb ||
             c is Explosion ||
+            c is Coin ||
             (c is RectangleComponent && c.priority == 100))
         .forEach((c) => c.removeFromParent());
 
@@ -351,6 +395,12 @@ class MyGame extends FlameGame
     _scoreDisplay = null;
     _healthDisplay?.removeFromParent();
     _healthDisplay = null;
+    _nicknameDisplay?.removeFromParent();
+    _nicknameDisplay = null;
+    _sessionCoinDisplay?.removeFromParent();
+    _sessionCoinDisplay = null;
+    _coinIcon?.removeFromParent();
+    _coinIcon = null;
     _distanceDisplay?.removeFromParent();
     _distanceDisplay = null;
     _progressBar?.removeFromParent();
@@ -386,12 +436,15 @@ class MyGame extends FlameGame
         size: size, paint: Paint()..color = Colors.black, priority: 1000)
       ..opacity = 0;
     add(blackOverlay);
-    blackOverlay.add(OpacityEffect.to(1.0, EffectController(duration: 0.5, curve: Curves.easeOut),
+    blackOverlay.add(OpacityEffect.to(
+        1.0, EffectController(duration: 0.5, curve: Curves.easeOut),
         onComplete: () {
       currentLevel++;
       _setupLevel();
       blackOverlay.add(OpacityEffect.to(
-          0.0, EffectController(duration: 1.0, curve: Curves.easeIn, startDelay: 0.5),
+          0.0,
+          EffectController(
+              duration: 1.0, curve: Curves.easeIn, startDelay: 0.5),
           onComplete: () {
         blackOverlay.removeFromParent();
         _bringPlayerBack();
@@ -411,7 +464,8 @@ class MyGame extends FlameGame
         player.isTransitioning = false;
         _createUI();
       }),
-      OpacityEffect.fadeIn(EffectController(duration: 0.5, curve: Curves.easeIn))
+      OpacityEffect.fadeIn(
+          EffectController(duration: 0.5, curve: Curves.easeIn))
     ]);
   }
 
@@ -420,6 +474,8 @@ class MyGame extends FlameGame
     _createShootButton();
     _createScoreDisplay(_safeTop);
     _createHealthDisplay(_safeTop);
+    if (isOnline) _createNicknameDisplay(_safeTop);
+    _createCoinDisplay(_safeTop);
     _createDistanceDisplay(_safeTop);
     _createProgressBar(_safeTop);
     _createPowerupsDisplay(_safeTop);
@@ -463,6 +519,11 @@ class MyGame extends FlameGame
     overlays.add('PauseMenu');
   }
 
+  void resumeGame() {
+    overlays.remove('PauseMenu');
+    resumeEngine();
+  }
+
   void _createAsteroidSpawner() {
     _asteroidSpawner = SpawnComponent.periodRange(
         factory: (index) => Asteroid(position: _generateSpawnPosition()),
@@ -492,18 +553,23 @@ class MyGame extends FlameGame
   }
 
   Vector2 _generateSpawnPosition() {
-    return Vector2(_random.nextDouble() * size.x, -150 - _random.nextDouble() * 200);
+    return Vector2(
+        _random.nextDouble() * size.x, -150 - _random.nextDouble() * 200);
   }
 
   void _createSaoThuyBackground() async {
     _background = SpriteComponent(
-        sprite: Sprite(images.fromCache('sao_thuy.png')), size: size, priority: -100);
+        sprite: Sprite(images.fromCache('sao_thuy.png')),
+        size: size,
+        priority: -100);
     add(_background!);
   }
 
   void _createSaoHoaBackground() async {
     _background = SpriteComponent(
-        sprite: Sprite(images.fromCache('sao_hoa.png')), size: size, priority: -100);
+        sprite: Sprite(images.fromCache('sao_hoa.png')),
+        size: size,
+        priority: -100);
     add(_background!);
   }
 
@@ -515,7 +581,25 @@ class MyGame extends FlameGame
     }
   }
 
-  // KHÔI PHỤC GIAO DIỆN GỐC
+  void _createNicknameDisplay(double topMargin) {
+    if (_nickname != null) {
+      _nicknameDisplay = TextComponent(
+          text: _nickname!,
+          anchor: Anchor.topLeft,
+          position: Vector2(20, topMargin + 5),
+          priority: 10,
+          textRenderer: TextPaint(
+              style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  shadows: [
+                Shadow(color: Colors.black, offset: Offset(1, 1), blurRadius: 2)
+              ])));
+      add(_nicknameDisplay!);
+    }
+  }
+
   void _createScoreDisplay(double topMargin) {
     _scoreDisplay = TextComponent(
         text: '$_score',
@@ -534,10 +618,16 @@ class MyGame extends FlameGame
   }
 
   void _createHealthDisplay(double topMargin) {
+    String healthText;
+    if (player.lives > 3) {
+      healthText = '❤️x${player.lives}';
+    } else {
+      healthText = ''.padRight(player.lives, '❤️');
+    }
     _healthDisplay = TextComponent(
-        text: ''.padRight(player.lives, '❤️'),
+        text: healthText,
         anchor: Anchor.topLeft,
-        position: Vector2(20, topMargin + 5),
+        position: Vector2(20, topMargin + 25),
         priority: 10,
         textRenderer: TextPaint(
             style: const TextStyle(fontSize: 30, shadows: [
@@ -546,15 +636,46 @@ class MyGame extends FlameGame
     add(_healthDisplay!);
   }
 
+  void _createCoinDisplay(double topMargin) {
+    _coinIcon = SpriteComponent(
+        sprite: _coinSprite,
+        size: Vector2.all(25),
+        anchor: Anchor.topLeft,
+        position: Vector2(20, topMargin + 60),
+        priority: 10);
+    add(_coinIcon!);
+
+    _sessionCoinDisplay = TextComponent(
+        text: 'x$_sessionCoins',
+        anchor: Anchor.topLeft,
+        position: Vector2(50, topMargin + 62),
+        priority: 10,
+        textRenderer: TextPaint(
+            style: const TextStyle(
+                color: Colors.yellowAccent,
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                shadows: [
+              Shadow(color: Colors.black, offset: Offset(1, 1), blurRadius: 2)
+            ])));
+    add(_sessionCoinDisplay!);
+  }
+
   void updatePlayerHealth(int lives) {
-    if (_healthDisplay != null) _healthDisplay!.text = ''.padRight(lives, '❤️');
+    if (_healthDisplay != null) {
+      if (lives > 3) {
+        _healthDisplay!.text = '❤️x$lives';
+      } else {
+        _healthDisplay!.text = ''.padRight(lives, '❤️');
+      }
+    }
   }
 
   void _createDistanceDisplay(double topMargin) {
     _distanceDisplay = TextComponent(
         text: '${_distanceTraveled.toInt()} km',
         anchor: Anchor.topLeft,
-        position: Vector2(40, topMargin + 80),
+        position: Vector2(20, topMargin + 90), // Di chuyển xuống
         priority: 10,
         textRenderer: TextPaint(
             style: const TextStyle(
@@ -570,13 +691,13 @@ class MyGame extends FlameGame
   void _createProgressBar(double topMargin) {
     _progressBar = RectangleComponent(
         size: Vector2(10, 200),
-        position: Vector2(20, topMargin + 80),
+        position: Vector2(20, topMargin + 120), // Di chuyển xuống
         paint: Paint()..color = Colors.grey.withOpacity(0.5),
         priority: 9);
     add(_progressBar!);
     _progressFill = RectangleComponent(
         size: Vector2(10, 0),
-        position: Vector2(20, topMargin + 280),
+        position: Vector2(20, topMargin + 320), // Di chuyển xuống
         anchor: Anchor.bottomLeft,
         paint: Paint()..color = Colors.greenAccent,
         priority: 10);
@@ -602,6 +723,27 @@ class MyGame extends FlameGame
     add(_laserIcon!);
   }
 
+  void addSessionCoins(int amount) {
+    _sessionCoins += amount;
+    _sessionCoinDisplay?.text = 'x$_sessionCoins';
+  }
+
+  void spendCoins(int amount) async {
+    if (_totalCoins < amount) return;
+
+    // Offline thì chỉ trừ local
+    if (!isOnline) {
+      _totalCoins -= amount;
+      return;
+    }
+
+    final ok = await _firebaseService.spendCoinsOnline(amount);
+    if (ok) {
+      _totalCoins -= amount; // ✅ trừ local sau khi server trừ thành công
+    }
+  }
+
+
   void incrementScore(int amount) {
     if (_levelTransitioning || _scoreDisplay == null) return;
     _score += amount;
@@ -610,19 +752,29 @@ class MyGame extends FlameGame
         ScaleEffect.to(Vector2.all(1.2), EffectController(duration: 0.05, alternate: true)));
   }
 
-  void playerDied() {
+  void playerDied() async {
     if (isOnline) {
-      _firebaseService.saveScore(score);
+      await _firebaseService.onGameEnd(
+        isWin: false,
+        score: _score,
+        coinsEarned: _sessionCoins,
+      );
+
+      // cập nhật local để UI đúng ngay
+      _totalCoins += _sessionCoins;
     }
+
     overlays.add('GameOver');
     pauseEngine();
   }
+
 
   void restartGame() {
     _levelTransitioning = false;
     _distanceTraveled = 0.0;
     currentLevel = 1;
     _score = 0;
+    _sessionCoins = 0;
     _bossSpawned = false;
     children
         .where((c) => c is! CameraComponent && c is! AudioManager)

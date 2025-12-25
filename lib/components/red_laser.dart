@@ -14,7 +14,7 @@ class RedLaser extends SpriteComponent with HasGameReference<MyGame>, CollisionC
     required this.direction,
     required this.speed,
   }) : super(
-    size: Vector2(40, 120), // Tăng kích thước to và dài hơn hẳn
+    size: Vector2(15, 40), // Tăng kích thước to và dài hơn hẳn
     anchor: Anchor.center,
     priority: 15,
   );

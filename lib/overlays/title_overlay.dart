@@ -27,8 +27,8 @@ class _TitleOverlayState extends State<TitleOverlay> {
 
   @override
   Widget build(BuildContext context) {
-    final String playerColor =
-        widget.game.playerColors[widget.game.playerColorIndex];
+    final String playerSkin =
+        widget.game.playerSkins[widget.game.playerSkinIndex];
 
     return AnimatedOpacity(
       onEnd: () {
@@ -99,6 +99,16 @@ class _TitleOverlayState extends State<TitleOverlay> {
                   width: 270,
                   child: Image.asset('assets/images/title.png'),
                 ),
+                const SizedBox(height: 10),
+                if (widget.game.isOnline && widget.game.nickname != null)
+                  Text(
+                    'Chào mừng, ${widget.game.nickname}!',
+                    style: const TextStyle(
+                      fontSize: 18,
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                 const SizedBox(height: 20),
                 Row(
                   mainAxisSize: MainAxisSize.min,
@@ -107,10 +117,10 @@ class _TitleOverlayState extends State<TitleOverlay> {
                       onTap: () {
                         widget.game.audioManager.playSound('click');
                         setState(() {
-                          widget.game.playerColorIndex--;
-                          if (widget.game.playerColorIndex < 0) {
-                            widget.game.playerColorIndex =
-                                widget.game.playerColors.length - 1;
+                          widget.game.playerSkinIndex--;
+                          if (widget.game.playerSkinIndex < 0) {
+                            widget.game.playerSkinIndex =
+                                widget.game.playerSkins.length - 1;
                           }
                         });
                       },
@@ -128,9 +138,9 @@ class _TitleOverlayState extends State<TitleOverlay> {
                         width: 100,
                         height: 100,
                         child: Image.asset(
-                          'assets/images/player_${playerColor}_off.png',
+                          'assets/images/$playerSkin.png',
                           gaplessPlayback: true,
-                          fit: BoxFit.fill,
+                          fit: BoxFit.contain,
                         ),
                       ),
                     ),
@@ -138,10 +148,10 @@ class _TitleOverlayState extends State<TitleOverlay> {
                       onTap: () {
                         widget.game.audioManager.playSound('click');
                         setState(() {
-                          widget.game.playerColorIndex++;
-                          if (widget.game.playerColorIndex ==
-                              widget.game.playerColors.length) {
-                            widget.game.playerColorIndex = 0;
+                          widget.game.playerSkinIndex++;
+                          if (widget.game.playerSkinIndex ==
+                              widget.game.playerSkins.length) {
+                            widget.game.playerSkinIndex = 0;
                           }
                         });
                       },
@@ -169,20 +179,41 @@ class _TitleOverlayState extends State<TitleOverlay> {
                 const SizedBox(height: 20),
 
                 if (widget.game.isOnline)
-                  GestureDetector(
-                    onTap: () {
-                      widget.game.audioManager.playSound('click');
-                      widget.game.showLeaderboard();
-                    },
-                    child: const Text(
-                      'Bảng Xếp Hạng',
-                      style: TextStyle(
-                        fontSize: 24,
-                        color: Colors.cyanAccent,
-                        fontWeight: FontWeight.bold,
-                        shadows: [Shadow(blurRadius: 10, color: Colors.cyan)],
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      GestureDetector(
+                        onTap: () {
+                          widget.game.audioManager.playSound('click');
+                          widget.game.showLeaderboard();
+                        },
+                        child: const Text(
+                          'Bảng Xếp Hạng',
+                          style: TextStyle(
+                            fontSize: 24,
+                            color: Colors.cyanAccent,
+                            fontWeight: FontWeight.bold,
+                            shadows: [Shadow(blurRadius: 10, color: Colors.cyan)],
+                          ),
+                        ),
                       ),
-                    ),
+                      const SizedBox(width: 20),
+                      GestureDetector(
+                        onTap: () {
+                          widget.game.audioManager.playSound('click');
+                          widget.game.overlays.add('Shop');
+                        },
+                        child: const Text(
+                          'Cửa Hàng',
+                          style: TextStyle(
+                            fontSize: 24,
+                            color: Colors.yellowAccent,
+                            fontWeight: FontWeight.bold,
+                            shadows: [Shadow(blurRadius: 10, color: Colors.yellow)],
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
 
                 Expanded(

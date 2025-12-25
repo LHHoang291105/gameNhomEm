@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math';
 
+import 'package:Phoenix_Blast/components/coin.dart';
 import 'package:Phoenix_Blast/components/explosion.dart';
 import 'package:Phoenix_Blast/components/pickup.dart';
 import 'package:Phoenix_Blast/my_game.dart';
@@ -11,9 +12,9 @@ import 'package:flutter/widgets.dart';
 
 class Asteroid extends SpriteComponent with HasGameReference<MyGame> {
   final Random _random = Random();
-  
-  static const double _maxSize = 100.0; 
-  
+
+  static const double _maxSize = 100.0;
+
   late Vector2 _velocity;
   final Vector2 _originalVelocity = Vector2.zero();
   late double _spinSpeed;
@@ -94,10 +95,12 @@ class Asteroid extends SpriteComponent with HasGameReference<MyGame> {
       _createExplosion();
       _maybeSpawnSmallerAsteroids();
       _maybeDropPickup();
+      _dropCoins(3);
     } else {
       game.incrementScore(1);
       _flashWhite();
       _applyKnockback();
+      _dropCoins(1);
     }
   }
 
@@ -130,6 +133,12 @@ class Asteroid extends SpriteComponent with HasGameReference<MyGame> {
     if (_random.nextDouble() < 0.1) {
       final type = PickupType.values[_random.nextInt(PickupType.values.length)];
       game.add(Pickup(pickupType: type, position: position.clone()));
+    }
+  }
+
+  void _dropCoins(int count) {
+    for (int i = 0; i < count; i++) {
+      game.add(Coin(value: 1, position: position.clone()));
     }
   }
 

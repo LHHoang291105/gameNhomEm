@@ -4,6 +4,7 @@ import 'package:Phoenix_Blast/overlays/leaderboard_overlay.dart';
 import 'package:Phoenix_Blast/overlays/loading_overlay.dart'; // Import màn hình chờ
 import 'package:Phoenix_Blast/overlays/login_overlay.dart';
 import 'package:Phoenix_Blast/overlays/nickname_overlay.dart';
+import 'package:Phoenix_Blast/overlays/shop_overlay.dart';
 import 'package:Phoenix_Blast/overlays/title_overlay.dart';
 import 'package:Phoenix_Blast/overlays/pause_menu.dart';
 import 'package:Phoenix_Blast/overlays/countdown_overlay.dart';
@@ -42,6 +43,7 @@ void main() async {
             'Login': (context, MyGame game) => LoginOverlay(game: game),
             'Nickname': (context, MyGame game) => NicknameOverlay(game: game),
             'Leaderboard': (context, MyGame game) => LeaderboardOverlay(game: game),
+            'Shop': (context, MyGame game) => ShopOverlay(game: game),
           },
         ),
       ),

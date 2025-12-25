@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math';
 
+import 'package:Phoenix_Blast/components/coin.dart';
 import 'package:Phoenix_Blast/components/explosion.dart';
 import 'package:Phoenix_Blast/components/monster_laser.dart';
 import 'package:Phoenix_Blast/components/pickup.dart';
@@ -131,12 +132,19 @@ class Monster extends SpriteAnimationComponent with HasGameReference<MyGame> {
       ));
       game.incrementScore(10);
       _maybeDropPickup();
+      _dropCoins(3);
   }
 
   void _maybeDropPickup() {
     if (_random.nextDouble() < 0.2) {
       final type = PickupType.values[_random.nextInt(PickupType.values.length)];
       game.add(Pickup(pickupType: type, position: position.clone()));
+    }
+  }
+
+  void _dropCoins(int count) {
+    for (int i = 0; i < count; i++) {
+      game.add(Coin(value: 1, position: position.clone()));
     }
   }
 

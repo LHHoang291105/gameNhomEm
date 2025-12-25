@@ -13,7 +13,7 @@ class MonsterLaser extends SpriteComponent with HasGameReference<MyGame>, Collis
     required super.position,
     required this.direction,
   }) : super(
-          size: Vector2(45, 120), // Tăng kích thước to thêm (từ 30x80 lên 45x120)
+          size: Vector2(15, 40), // Tăng kích thước to thêm (từ 30x80 lên 45x120)
           anchor: Anchor.center,
           priority: 10,
         );

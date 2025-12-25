@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math';
 
+import 'package:Phoenix_Blast/components/coin.dart';
 import 'package:Phoenix_Blast/components/explosion.dart';
 import 'package:Phoenix_Blast/components/pickup.dart';
 import 'package:Phoenix_Blast/components/red_laser.dart';
@@ -180,6 +181,7 @@ class BossMonster extends SpriteAnimationComponent with HasGameReference<MyGame>
     if (_isTransitioning || _isMidPhaseTransitioning) return;
 
     health -= amount;
+    _dropCoins(2);
     if (amount == 1) _hitCount++;
     if (_hitCount >= 10) { _hitCount = 0; _dropRandomPickup(); }
     
@@ -198,6 +200,7 @@ class BossMonster extends SpriteAnimationComponent with HasGameReference<MyGame>
     }
 
     if (health <= 0) {
+      _dropCoins(20);
       game.victory();
       removeFromParent();
       _explode();
@@ -212,6 +215,12 @@ class BossMonster extends SpriteAnimationComponent with HasGameReference<MyGame>
     final types = [PickupType.bomb, PickupType.shield, PickupType.laser];
     final type = types[Random().nextInt(types.length)];
     game.add(Pickup(pickupType: type, position: position.clone()));
+  }
+
+  void _dropCoins(int count) {
+    for (int i = 0; i < count; i++) {
+      game.add(Coin(value: 1, position: position.clone()));
+    }
   }
 
   void _explode() {

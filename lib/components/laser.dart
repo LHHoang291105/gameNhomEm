@@ -10,12 +10,14 @@ import 'package:flame/components.dart';
 
 class Laser extends SpriteComponent with HasGameReference<MyGame>, CollisionCallbacks {
   final double _speed = 900; // Tăng tốc độ bay để đạn dứt khoát hơn
+  final int damage;
 
   Laser({
     required super.position,
     super.angle,
+    this.damage = 1,
   }) : super(
-          size: Vector2(15, 40), 
+          size: Vector2(15, 40),
           anchor: Anchor.center,
           priority: 5,
         );
@@ -23,15 +25,15 @@ class Laser extends SpriteComponent with HasGameReference<MyGame>, CollisionCall
   @override
   FutureOr<void> onLoad() async {
     sprite = await game.loadSprite('laser.png');
-    
+
     // ĐỘ NHẠY: Đặt hitbox vừa vặn nhưng hơi rộng ra 2 bên một chút (1.5 lần)
     // để dễ trúng mục tiêu mà không bị chồng lấn quá mức giữa 3 tia
     add(RectangleHitbox.relative(
-      Vector2(1.5, 1.0), 
+      Vector2(1.5, 1.0),
       parentSize: size,
       anchor: Anchor.center,
     ));
-    
+
     return super.onLoad();
   }
 
@@ -62,10 +64,10 @@ class Laser extends SpriteComponent with HasGameReference<MyGame>, CollisionCall
       other.takeDamage();
       removeFromParent();
     } else if (other is BossMonster) {
-      other.takeDamage(amount: 1);
+      other.takeDamage(amount: damage);
       removeFromParent();
     }
-    
+
     super.onCollisionStart(intersectionPoints, other);
   }
 }

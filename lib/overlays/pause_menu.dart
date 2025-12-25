@@ -1,5 +1,4 @@
 import 'package:Phoenix_Blast/my_game.dart';
-import 'package:Phoenix_Blast/overlays/countdown_overlay.dart';
 import 'package:flutter/material.dart';
 
 class PauseMenu extends StatefulWidget {
@@ -98,7 +97,7 @@ class _PauseMenuState extends State<PauseMenu> {
                   ),
                   onPressed: () {
                     widget.game.overlays.remove('PauseMenu');
-                    widget.game.overlays.add('Countdown');
+                    widget.game.resumeEngine();
                   },
                   child: const Text(
                     'RESUME',

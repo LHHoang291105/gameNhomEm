@@ -5,6 +5,7 @@ import 'dart:ui';
 import 'package:Phoenix_Blast/components/asteroid.dart';
 import 'package:Phoenix_Blast/components/bomb.dart';
 import 'package:Phoenix_Blast/components/boss_monster.dart';
+import 'package:Phoenix_Blast/components/coin.dart';
 import 'package:Phoenix_Blast/components/explosion.dart';
 import 'package:Phoenix_Blast/components/laser.dart';
 import 'package:Phoenix_Blast/components/monster.dart';
@@ -25,15 +26,15 @@ class Player extends SpriteAnimationComponent
   double _elapsedFireTime = 0.0;
   final Vector2 _keyboardMovement = Vector2.zero();
   bool _isDestroyed = false;
-  bool isTransitioning = false; 
+  bool isTransitioning = false;
   final Random _random = Random();
   late Timer _explosionTimer;
   late Timer _laserPowerupTimer;
   late Timer _shieldPowerupTimer;
   Shield? activeShield;
-  late String _color;
+  late String _skin;
 
-  late Sprite _destructionSprite; 
+  late Sprite _destructionSprite;
 
   int lives = 3;
   bool _isInvincible = false;
@@ -45,23 +46,36 @@ class Player extends SpriteAnimationComponent
     _shieldPowerupTimer = Timer(4.0, onTick: _deactivateShield, autoStart: false);
     _invincibilityTimer = Timer(1.5, onTick: () => _isInvincible = false, autoStart: false);
   }
-  
+
   bool get isLaserActive => _laserPowerupTimer.isRunning();
   double get laserRemainingTime => _laserPowerupTimer.limit - _laserPowerupTimer.current;
   bool get hasShield => activeShield != null;
 
   @override
   FutureOr<void> onLoad() async {
-    _color = game.playerColors[game.playerColorIndex];
-    final sprite1 = await game.loadSprite('player_${_color}_on0.png');
-    final sprite2 = await game.loadSprite('player_${_color}_on1.png');
-    _destructionSprite = await game.loadSprite('player_${_color}_off.png');
+    _skin = game.playerSkins[game.playerSkinIndex];
+
+    List<Sprite> animationSprites = [];
+    if (_skin == 'vang') {
+      animationSprites = await Future.wait([
+        game.loadSprite('vang1.png'),
+        game.loadSprite('vang2.png'),
+        game.loadSprite('vang3.png'),
+      ]);
+    } else if (_skin == 'maybay') {
+      animationSprites = await Future.wait([
+        game.loadSprite('maybay1.png'),
+        game.loadSprite('maybay2.png'),
+      ]);
+    }
 
     animation = SpriteAnimation.spriteList(
-      [sprite1, sprite2],
+      animationSprites,
       stepTime: 0.1,
       loop: true,
     );
+
+    _destructionSprite = await game.loadSprite('$_skin.png');
 
     size = Vector2(1024, 1024) * 0.05;
     anchor = Anchor.center;
@@ -168,15 +182,15 @@ class Player extends SpriteAnimationComponent
       other.removeFromParent();
       game.incrementScore(1);
       switch (other.pickupType) {
-        case PickupType.laser: 
-          _laserPowerupTimer.start(); 
+        case PickupType.laser:
+          _laserPowerupTimer.start();
           break;
         case PickupType.bomb:
+          game.children.whereType<Asteroid>().forEach((asteroid) => asteroid.selfDestruct());
+          game.children.whereType<Monster>().forEach((monster) => monster.takeDamage());
           final boss = game.children.whereType<BossMonster>().firstOrNull;
           if (boss != null) {
             boss.takeDamage(amount: 10);
-          } else {
-            game.add(Bomb(position: position.clone()));
           }
           break;
         case PickupType.heart:
@@ -191,6 +205,8 @@ class Player extends SpriteAnimationComponent
           _shieldPowerupTimer.start();
           break;
       }
+    } else if (other is Coin) {
+      game.audioManager.playSound('collect');
     }
   }
 

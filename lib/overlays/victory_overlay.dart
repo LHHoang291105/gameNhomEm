@@ -86,7 +86,26 @@ class _VictoryOverlayState extends State<VictoryOverlay> with SingleTickerProvid
                     ),
                   ),
                 ),
-
+                const SizedBox(height: 10),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Image.asset(
+                      'assets/images/coin.png',
+                      width: 30,
+                      height: 30,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'x${widget.game.sessionCoins}',
+                      style: const TextStyle(
+                        color: Colors.yellowAccent,
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
                 const SizedBox(height: 80),
                 
                 _MenuButton(
