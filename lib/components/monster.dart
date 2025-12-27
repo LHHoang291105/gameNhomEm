@@ -30,7 +30,6 @@ class Monster extends SpriteAnimationComponent with HasGameReference<MyGame> {
 
     position.y = -250 - _random.nextDouble() * 200;
     
-    // Tăng tốc độ rơi theo level
     double minFallSpeed = 40.0;
     double maxFallSpeedAdd = 50.0;
     if (game.currentLevel == 2) {
@@ -68,7 +67,6 @@ class Monster extends SpriteAnimationComponent with HasGameReference<MyGame> {
       }
       _fireTimer = Timer(2.0, onTick: _fireLaser, repeat: true);
     } else if (game.currentLevel == 3) {
-      // Random chọn 1 trong 2 loại quái màn 3
       if (_random.nextBool()) {
         animationSprites = [
           await game.loadSprite('monster_mini_sao_hoa_2.png'),
@@ -123,16 +121,21 @@ class Monster extends SpriteAnimationComponent with HasGameReference<MyGame> {
     }
   }
   
-  void takeDamage() {
-      removeFromParent();
-      game.add(Explosion(
-        position: position.clone(), 
-        explosionSize: size.x,
-        explosionType: ExplosionType.fire,
-      ));
-      game.incrementScore(10);
-      _maybeDropPickup();
-      _dropCoins(3);
+  void takeDamage({bool fromBomb = false}) {
+    if (fromBomb) {
+      selfDestruct();
+      return;
+    }
+
+    removeFromParent();
+    game.add(Explosion(
+      position: position.clone(),
+      explosionSize: size.x,
+      explosionType: ExplosionType.fire,
+    ));
+    game.incrementScore(10);
+    _maybeDropPickup();
+    _dropCoins(3);
   }
 
   void _maybeDropPickup() {
@@ -146,6 +149,15 @@ class Monster extends SpriteAnimationComponent with HasGameReference<MyGame> {
     for (int i = 0; i < count; i++) {
       game.add(Coin(value: 1, position: position.clone()));
     }
+  }
+
+  void selfDestruct() {
+    removeFromParent();
+    game.add(Explosion(
+      position: position.clone(), 
+      explosionSize: size.x,
+      explosionType: ExplosionType.fire,
+    ));
   }
 
   void explodeSilently() {

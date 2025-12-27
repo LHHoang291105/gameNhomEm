@@ -31,8 +31,10 @@ class MyGame extends FlameGame
   late JoystickComponent joystick;
   final Random _random = Random();
   ShootButton? _shootButton;
-  final List<String> playerSkins = ['vang', 'maybay'];
-  int playerSkinIndex = 0;
+
+  String currentSkin = 'vang';
+  String currentSkill = '';
+  List<String> skinsOwned = ['vang', 'maybay'];
 
   late Sprite _joystickKnobSprite;
   late Sprite _joystickBackgroundSprite;
@@ -125,6 +127,21 @@ class MyGame extends FlameGame
       'maybay.png',
       'maybay1.png',
       'maybay2.png',
+      'player_red_off.png',
+      'player_red_on0.png',
+      'player_red_on1.png',
+      'player_blue_off.png',
+      'player_blue_on0.png',
+      'player_blue_on1.png',
+      'chienco_hong.png',
+      'chienco_hong1.png',
+      'chienco_hong2.png',
+      'chienco_xanh.png',
+      'chienco_xanh1.png',
+      'chienco_xanh2.png',
+      'skill_samxet.png',
+      'skill_hinhtron.png',
+      'skill_cauvong.png',
       'coin.png',
       'coin1.png',
       'coin2.png',
@@ -149,20 +166,8 @@ class MyGame extends FlameGame
     _handleInitialScreen();
   }
 
-  void _handleInitialScreen() async {
-    if (_firebaseService.currentUser != null) {
-      isOnline = true;
-      if (await _firebaseService.hasNickname()) {
-        _nickname = await _firebaseService.getNickname();
-        _totalCoins = await _firebaseService.getCoins();
-        showMainMenu();
-      } else {
-        overlays.add('Nickname');
-      }
-    } else {
-      isOnline = false;
-      overlays.add('Login');
-    }
+  void _handleInitialScreen() {
+    overlays.add('Login');
     overlays.remove('Loading');
   }
 
@@ -170,14 +175,30 @@ class MyGame extends FlameGame
     isOnline = true;
     overlays.remove('Login');
     overlays.add('Loading');
-    if (!await _firebaseService.hasNickname()) {
-      overlays.remove('Loading');
-      overlays.add('Nickname');
-    } else {
-      _nickname = await _firebaseService.getNickname();
-      _totalCoins = await _firebaseService.getCoins();
+
+    if (_firebaseService.currentUser != null) {
+      await _firebaseService.ensurePlayerDoc(_firebaseService.currentUser!);
+    }
+
+    await updatePlayerData();
+    
+    if (_nickname?.isNotEmpty == true) {
       overlays.remove('Loading');
       showMainMenu();
+    } else {
+      overlays.remove('Loading');
+      overlays.add('Nickname');
+    }
+  }
+
+  Future<void> updatePlayerData() async {
+    final playerData = await _firebaseService.getPlayerData();
+    if (playerData != null) {
+      _nickname = playerData['nickname'];
+      _totalCoins = (playerData['coins'] ?? 0) as int;
+      currentSkin = playerData['currentSkin'] ?? 'vang';
+      currentSkill = playerData['currentSkill'] ?? '';
+      skinsOwned = (playerData['skinsOwned'] as Map<String, dynamic>).keys.toList();
     }
   }
 
@@ -185,6 +206,9 @@ class MyGame extends FlameGame
     isOnline = false;
     _nickname = 'Offline';
     _totalCoins = 0;
+    currentSkin = 'vang';
+    currentSkill = '';
+    skinsOwned = ['vang', 'maybay'];
     overlays.remove('Login');
     showMainMenu();
   }
@@ -265,12 +289,12 @@ class MyGame extends FlameGame
           spawnRate = 0.8 + _random.nextDouble() * 0.8;
         }
       } else {
-        spawnRate = 0.8 + _random.nextDouble() * 1.0; // Giảm tần suất spawn ở màn 3
+        spawnRate = 0.8 + _random.nextDouble() * 1.0;
       }
 
       add(Monster(position: _generateSpawnPosition()));
 
-      if (currentLevel == 3 && _random.nextDouble() < 0.3) { // Giảm xác suất spawn thêm quái
+      if (currentLevel == 3 && _random.nextDouble() < 0.3) { 
         add(Monster(position: _generateSpawnPosition()));
       }
 
@@ -304,16 +328,11 @@ class MyGame extends FlameGame
         score: _score,
         coinsEarned: _sessionCoins,
       );
-
-      // cập nhật local để UI đúng ngay
       _totalCoins += _sessionCoins;
     }
-
     pauseEngine();
     overlays.add('Victory');
   }
-
-
 
   void _updatePowerupsDisplay() {
     if (_shieldIcon == null || _laserIcon == null) return;
@@ -355,7 +374,8 @@ class MyGame extends FlameGame
             c is Bomb ||
             c is Explosion ||
             c is Coin ||
-            (c is RectangleComponent && c.priority == 100))
+            (c is RectangleComponent && c.priority == 100) ||
+            c is BombExplosion)
         .forEach((c) => c.removeFromParent());
 
     if (currentLevel > 1) {
@@ -453,6 +473,8 @@ class MyGame extends FlameGame
   }
 
   void _bringPlayerBack() {
+    player.removeFromParent(); 
+    _createPlayer();
     player.position = Vector2(size.x / 2, size.y + player.size.y * 2);
     player.opacity = 0;
     player.addAll([
@@ -483,7 +505,7 @@ class MyGame extends FlameGame
   }
 
   Future<void> _createPlayer() async {
-    player = Player();
+    player = Player(skin: currentSkin);
     player.position = Vector2(size.x / 2, size.y * 0.8);
     await add(player);
   }
@@ -675,7 +697,7 @@ class MyGame extends FlameGame
     _distanceDisplay = TextComponent(
         text: '${_distanceTraveled.toInt()} km',
         anchor: Anchor.topLeft,
-        position: Vector2(20, topMargin + 90), // Di chuyển xuống
+        position: Vector2(20, topMargin + 90), 
         priority: 10,
         textRenderer: TextPaint(
             style: const TextStyle(
@@ -691,13 +713,13 @@ class MyGame extends FlameGame
   void _createProgressBar(double topMargin) {
     _progressBar = RectangleComponent(
         size: Vector2(10, 200),
-        position: Vector2(20, topMargin + 120), // Di chuyển xuống
+        position: Vector2(20, topMargin + 120), 
         paint: Paint()..color = Colors.grey.withOpacity(0.5),
         priority: 9);
     add(_progressBar!);
     _progressFill = RectangleComponent(
         size: Vector2(10, 0),
-        position: Vector2(20, topMargin + 320), // Di chuyển xuống
+        position: Vector2(20, topMargin + 320), 
         anchor: Anchor.bottomLeft,
         paint: Paint()..color = Colors.greenAccent,
         priority: 10);
@@ -728,21 +750,21 @@ class MyGame extends FlameGame
     _sessionCoinDisplay?.text = 'x$_sessionCoins';
   }
 
-  void spendCoins(int amount) async {
-    if (_totalCoins < amount) return;
-
-    // Offline thì chỉ trừ local
-    if (!isOnline) {
-      _totalCoins -= amount;
-      return;
+  Future<void> updateCurrentSkin(String skin) async {
+    currentSkin = skin;
+    if (isOnline) {
+      await _firebaseService.equipItem(skin, 'skin');
     }
-
-    final ok = await _firebaseService.spendCoinsOnline(amount);
-    if (ok) {
-      _totalCoins -= amount; // ✅ trừ local sau khi server trừ thành công
-    }
+    await updatePlayerData();
   }
 
+  Future<void> updateCurrentSkill(String skill) async {
+    currentSkill = skill;
+    if (isOnline) {
+      await _firebaseService.equipItem(skill, 'skill');
+    }
+    await updatePlayerData();
+  }
 
   void incrementScore(int amount) {
     if (_levelTransitioning || _scoreDisplay == null) return;
@@ -755,15 +777,12 @@ class MyGame extends FlameGame
   void playerDied() async {
     if (isOnline) {
       await _firebaseService.onGameEnd(
-        isWin: false,
-        score: _score,
-        coinsEarned: _sessionCoins,
+        isWin: false, 
+        score: _score, 
+        coinsEarned: _sessionCoins
       );
-
-      // cập nhật local để UI đúng ngay
       _totalCoins += _sessionCoins;
     }
-
     overlays.add('GameOver');
     pauseEngine();
   }

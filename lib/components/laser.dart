@@ -9,13 +9,15 @@ import 'package:flame/collisions.dart';
 import 'package:flame/components.dart';
 
 class Laser extends SpriteComponent with HasGameReference<MyGame>, CollisionCallbacks {
-  final double _speed = 900; // Tăng tốc độ bay để đạn dứt khoát hơn
+  final double _speed = 900;
   final int damage;
+  final String spriteName;
 
   Laser({
     required super.position,
     super.angle,
     this.damage = 1,
+    this.spriteName = 'laser.png',
   }) : super(
           size: Vector2(15, 40),
           anchor: Anchor.center,
@@ -24,10 +26,8 @@ class Laser extends SpriteComponent with HasGameReference<MyGame>, CollisionCall
 
   @override
   FutureOr<void> onLoad() async {
-    sprite = await game.loadSprite('laser.png');
+    sprite = await game.loadSprite(spriteName);
 
-    // ĐỘ NHẠY: Đặt hitbox vừa vặn nhưng hơi rộng ra 2 bên một chút (1.5 lần)
-    // để dễ trúng mục tiêu mà không bị chồng lấn quá mức giữa 3 tia
     add(RectangleHitbox.relative(
       Vector2(1.5, 1.0),
       parentSize: size,
@@ -40,7 +40,6 @@ class Laser extends SpriteComponent with HasGameReference<MyGame>, CollisionCall
   @override
   void update(double dt) {
     super.update(dt);
-    // Di chuyển theo góc bắn
     position.x += _speed * dt * sin(angle ?? 0);
     position.y -= _speed * dt * cos(angle ?? 0);
 
@@ -54,12 +53,11 @@ class Laser extends SpriteComponent with HasGameReference<MyGame>, CollisionCall
     Set<Vector2> intersectionPoints,
     PositionComponent other,
   ) {
-    // Chỉ xử lý nếu tia laser này chưa bị đánh dấu xóa
     if (isRemoving || isRemoved) return;
 
     if (other is Asteroid) {
       other.takeDamage();
-      removeFromParent(); // Xóa ngay viên đạn trúng đích
+      removeFromParent();
     } else if (other is Monster) {
       other.takeDamage();
       removeFromParent();

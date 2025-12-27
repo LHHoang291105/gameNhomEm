@@ -12,10 +12,22 @@ class TitleOverlay extends StatefulWidget {
 
 class _TitleOverlayState extends State<TitleOverlay> {
   double _opacity = 0.0;
+  final List<String> _playerSkins = [
+    'vang',
+    'maybay',
+    'chienco_hong',
+    'chienco_xanh',
+    'player_blue_off',
+    'player_red_off'
+  ];
+  late int _playerSkinIndex;
 
   @override
   void initState() {
     super.initState();
+    _playerSkinIndex = _playerSkins.indexOf(widget.game.currentSkin);
+    if (_playerSkinIndex == -1) _playerSkinIndex = 0;
+
     Future.delayed(const Duration(milliseconds: 100), () {
       if (mounted) {
         setState(() {
@@ -27,8 +39,8 @@ class _TitleOverlayState extends State<TitleOverlay> {
 
   @override
   Widget build(BuildContext context) {
-    final String playerSkin =
-        widget.game.playerSkins[widget.game.playerSkinIndex];
+    final String playerSkin = _playerSkins[_playerSkinIndex];
+    final bool isOwned = widget.game.skinsOwned.contains(playerSkin);
 
     return AnimatedOpacity(
       onEnd: () {
@@ -42,14 +54,13 @@ class _TitleOverlayState extends State<TitleOverlay> {
         alignment: Alignment.topCenter,
         child: Stack(
           children: [
-            // Nút Quay lại màn hình Đăng nhập (Thay cho nút logout cũ ở góc trên)
             PositionImage(
               top: 50,
               left: 20,
               child: IconButton(
                 onPressed: () {
                   widget.game.audioManager.playSound('click');
-                  widget.game.logout(); // Hàm logout sẽ đưa về màn hình Login
+                  widget.game.logout();
                 },
                 icon: const Column(
                   mainAxisSize: MainAxisSize.min,
@@ -68,7 +79,6 @@ class _TitleOverlayState extends State<TitleOverlay> {
               ),
             ),
 
-            // Nút Hướng dẫn
             PositionImage(
               top: 50,
               right: 20,
@@ -117,10 +127,9 @@ class _TitleOverlayState extends State<TitleOverlay> {
                       onTap: () {
                         widget.game.audioManager.playSound('click');
                         setState(() {
-                          widget.game.playerSkinIndex--;
-                          if (widget.game.playerSkinIndex < 0) {
-                            widget.game.playerSkinIndex =
-                                widget.game.playerSkins.length - 1;
+                          _playerSkinIndex--;
+                          if (_playerSkinIndex < 0) {
+                            _playerSkinIndex = _playerSkins.length - 1;
                           }
                         });
                       },
@@ -137,10 +146,13 @@ class _TitleOverlayState extends State<TitleOverlay> {
                       child: SizedBox(
                         width: 100,
                         height: 100,
-                        child: Image.asset(
-                          'assets/images/$playerSkin.png',
-                          gaplessPlayback: true,
-                          fit: BoxFit.contain,
+                        child: Opacity(
+                          opacity: isOwned ? 1.0 : 0.4,
+                          child: Image.asset(
+                            'assets/images/$playerSkin.png',
+                            gaplessPlayback: true,
+                            fit: BoxFit.contain,
+                          ),
                         ),
                       ),
                     ),
@@ -148,10 +160,9 @@ class _TitleOverlayState extends State<TitleOverlay> {
                       onTap: () {
                         widget.game.audioManager.playSound('click');
                         setState(() {
-                          widget.game.playerSkinIndex++;
-                          if (widget.game.playerSkinIndex ==
-                              widget.game.playerSkins.length) {
-                            widget.game.playerSkinIndex = 0;
+                          _playerSkinIndex++;
+                          if (_playerSkinIndex == _playerSkins.length) {
+                            _playerSkinIndex = 0;
                           }
                         });
                       },
@@ -165,15 +176,21 @@ class _TitleOverlayState extends State<TitleOverlay> {
                 const SizedBox(height: 10),
                 GestureDetector(
                   onTap: () {
-                    widget.game.audioManager.playSound('start');
-                    widget.game.overlays.add('Countdown');
-                    setState(() {
-                      _opacity = 0.0;
-                    });
+                    if (isOwned) {
+                      widget.game.currentSkin = _playerSkins[_playerSkinIndex];
+                      widget.game.audioManager.playSound('start');
+                      widget.game.overlays.add('Countdown');
+                      setState(() {
+                        _opacity = 0.0;
+                      });
+                    }
                   },
-                  child: SizedBox(
-                    width: 200,
-                    child: Image.asset('assets/images/start_button.png'),
+                  child: Opacity(
+                    opacity: isOwned ? 1.0 : 0.5,
+                    child: SizedBox(
+                      width: 200,
+                      child: Image.asset('assets/images/start_button.png'),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 20),
@@ -222,7 +239,7 @@ class _TitleOverlayState extends State<TitleOverlay> {
                     child: Padding(
                       padding: const EdgeInsets.all(20),
                       child: Row(
-                        mainAxisAlignment: MainAxisAlignment.end, // Dồn về bên phải
+                        mainAxisAlignment: MainAxisAlignment.end,
                         children: [
                           IconButton(
                             onPressed: () {

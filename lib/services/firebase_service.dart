@@ -13,14 +13,15 @@ class FirebaseService {
   DocumentReference<Map<String, dynamic>> _playerRef(String uid) =>
       _firestore.collection('playerData').doc(uid);
 
-  // 1) Đăng nhập + khởi tạo doc user (1 lần)
   Future<User?> signInWithGoogle() async {
     try {
       debugPrint("Bắt đầu đăng nhập Google...");
 
-      await _googleSignIn.signOut(); // để chọn tài khoản
       final googleUser = await _googleSignIn.signIn();
-      if (googleUser == null) return null;
+      if (googleUser == null) {
+        debugPrint("Người dùng đã hủy đăng nhập.");
+        return null;
+      }
 
       final googleAuth = await googleUser.authentication;
       final credential = GoogleAuthProvider.credential(
@@ -32,7 +33,7 @@ class FirebaseService {
       final user = userCredential.user;
 
       if (user != null) {
-        await ensurePlayerDoc(user); // 🔥 QUAN TRỌNG
+        await ensurePlayerDoc(user);
       }
 
       debugPrint("Đăng nhập thành công: ${user?.displayName}");
@@ -46,31 +47,27 @@ class FirebaseService {
   Future<void> signOut() async {
     await _googleSignIn.signOut();
     await _auth.signOut();
+    debugPrint("Đã đăng xuất.");
   }
 
-  // 2) Tạo doc user nếu chưa có + set mặc định shop (skin/skill)
   Future<void> ensurePlayerDoc(User user) async {
     final ref = _playerRef(user.uid);
     final snap = await ref.get();
 
     if (!snap.exists) {
+      debugPrint("Tạo tài liệu mới cho người dùng: ${user.uid}");
       await ref.set({
         'email': user.email,
-        'nickname': user.displayName ?? 'Player',
-
+        'nickname': '',
         'coins': 0,
         'bestScore': 0,
         'lastScore': 0,
-
-        // ✅ mặc định shop
         'skinsOwned': {'vang': true, 'maybay': true},
         'currentSkin': 'vang',
-        'skillsOwned': {'laser': true},
-        'currentSkill': 'laser',
-
+        'skillsOwned': {},
+        'currentSkill': '',
         'wins': 0,
         'losses': 0,
-
         'createdAt': FieldValue.serverTimestamp(),
         'lastLoginAt': FieldValue.serverTimestamp(),
       });
@@ -79,7 +76,6 @@ class FirebaseService {
     }
   }
 
-  // 3) Nickname nằm trong playerData
   Future<bool> hasNickname() async {
     final user = currentUser;
     if (user == null) return false;
@@ -93,7 +89,6 @@ class FirebaseService {
     if (user == null) return;
     await _playerRef(user.uid).set({
       'nickname': nickname,
-      'email': user.email,
     }, SetOptions(merge: true));
   }
 
@@ -104,25 +99,20 @@ class FirebaseService {
     return doc.data()?['nickname'] as String?;
   }
 
-  // 4) Coins: cộng/trừ bằng increment (thắng/thua đều gọi được)
-  Future<void> addCoins(int delta) async {
-    final user = currentUser;
-    if (user == null) return;
-    await _playerRef(user.uid).set({
-      'coins': FieldValue.increment(delta),
-      'updatedAt': FieldValue.serverTimestamp(),
-    }, SetOptions(merge: true));
+  Future<Map<String, dynamic>?> getPlayerData() async {
+    if (currentUser == null) return null;
+    final doc = await _playerRef(currentUser!.uid).get();
+    return doc.data();
   }
 
-  Future<int> getCoins() async {
-    final user = currentUser;
-    if (user == null) return 0;
-    final doc = await _playerRef(user.uid).get();
-    return (doc.data()?['coins'] ?? 0) as int;
+  Stream<QuerySnapshot<Map<String, dynamic>>> top5Players() {
+    return _firestore
+        .collection('playerData')
+        .orderBy('bestScore', descending: true)
+        .limit(5)
+        .snapshots();
   }
 
-  // 5) Kết thúc game: coin luôn lưu, bestScore chỉ khi thắng (và cao hơn)
-  // Hàm này sẽ thay thế cho việc gọi saveScore và updateCoins riêng lẻ
   Future<void> onGameEnd({
     required bool isWin,
     required int score,
@@ -130,48 +120,68 @@ class FirebaseService {
   }) async {
     if (currentUser == null) return;
 
-    final playerDocRef = _firestore.collection('playerData').doc(currentUser!.uid);
-
-    try {
-      // Tự động cộng số xu kiếm được vào tổng xu trên server
-      await playerDocRef.update({'coins': FieldValue.increment(coinsEarned)});
-
-      // Chỉ lưu điểm vào bảng xếp hạng nếu thắng
-      if (isWin) {
-        await _firestore.collection('scores').add({
-          'score': score,
-          'nickname': await getNickname() ?? 'Player',
-          'userId': currentUser!.uid,
-          'timestamp': FieldValue.serverTimestamp(),
-        });
-      }
-    } catch (e) {
-      print("Lỗi khi kết thúc game: $e");
-    }
-  }
-
-// Hàm này dùng để tiêu xu, sử dụng Transaction để đảm bảo an toàn
-  Future<bool> spendCoinsOnline(int amount) async {
-    if (currentUser == null) return false;
-
-    final playerDocRef = _firestore.collection('playerData').doc(currentUser!.uid);
+    final playerDocRef = _playerRef(currentUser!.uid);
 
     try {
       await _firestore.runTransaction((transaction) async {
         final snapshot = await transaction.get(playerDocRef);
-        final currentCoins = snapshot.get('coins') as int;
+        
+        var updates = <String, dynamic>{
+          'coins': FieldValue.increment(coinsEarned),
+        };
 
-        if (currentCoins < amount) {
-          // Ném lỗi nếu không đủ xu
+        if (isWin) {
+          final bestScore = snapshot.data()?['bestScore'] ?? 0;
+          if (score > bestScore) {
+            updates['bestScore'] = score;
+          }
+        }
+        
+        transaction.update(playerDocRef, updates);
+      });
+    } catch (e) {
+      debugPrint("Lỗi khi xử lý cuối game: $e");
+    }
+  }
+
+  Future<bool> purchaseItem(String itemId, String itemType, int price) async {
+    if (currentUser == null) return false;
+    final playerDocRef = _playerRef(currentUser!.uid);
+    final itemField = itemType == 'skin' ? 'skinsOwned' : 'skillsOwned';
+
+    try {
+      await _firestore.runTransaction((transaction) async {
+        final snapshot = await transaction.get(playerDocRef);
+        final data = snapshot.data()!;
+        final currentCoins = data['coins'] as int;
+
+        if (currentCoins < price) {
           throw Exception('Không đủ xu!');
         }
 
-        transaction.update(playerDocRef, {'coins': currentCoins - amount});
+        transaction.update(playerDocRef, {
+          'coins': currentCoins - price,
+          '$itemField.$itemId': true,
+        });
       });
-      return true; // Giao dịch thành công
+      return true;
     } catch (e) {
-      print("Lỗi khi tiêu xu: $e");
-      return false; // Giao dịch thất bại
+      debugPrint("Lỗi khi mua vật phẩm: $e");
+      return false;
+    }
+  }
+
+  Future<bool> equipItem(String itemId, String itemType) async {
+    if (currentUser == null) return false;
+    final playerDocRef = _playerRef(currentUser!.uid);
+    final currentItemField = itemType == 'skin' ? 'currentSkin' : 'currentSkill';
+
+    try {
+      await playerDocRef.update({currentItemField: itemId});
+      return true;
+    } catch (e) {
+      debugPrint("Lỗi khi trang bị vật phẩm: $e");
+      return false;
     }
   }
 }

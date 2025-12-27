@@ -18,7 +18,7 @@ class LeaderboardOverlay extends StatelessWidget {
           padding: const EdgeInsets.symmetric(vertical: 50.0, horizontal: 20.0),
           child: Column(
             children: [
-              const Text(
+              Text(
                 'Bảng Xếp Hạng',
                 style: TextStyle(
                   fontSize: 48,
@@ -27,10 +27,10 @@ class LeaderboardOverlay extends StatelessWidget {
                   shadows: [Shadow(blurRadius: 20, color: Colors.cyanAccent)],
                 ),
               ),
-              const SizedBox(height: 40),
+              SizedBox(height: 40),
               Expanded(
-                child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-                  stream: _firebaseService.top5Players(), // ✅ đọc từ playerData
+                child: StreamBuilder<QuerySnapshot>(
+                  stream: _firebaseService.top5Players(),
                   builder: (context, snapshot) {
                     if (snapshot.connectionState == ConnectionState.waiting) {
                       return const Center(child: CircularProgressIndicator());
@@ -44,40 +44,24 @@ class LeaderboardOverlay extends StatelessWidget {
                       );
                     }
 
-                    final players = snapshot.data!.docs;
+                    final scores = snapshot.data!.docs;
 
                     return ListView.builder(
-                      itemCount: players.length,
+                      itemCount: scores.length,
                       itemBuilder: (context, index) {
-                        final data = players[index].data();
-
-                        final nickname = (data['nickname'] ?? 'Ẩn danh').toString();
-                        final bestScore = (data['bestScore'] ?? 0);
-
+                        var scoreData = scores[index].data() as Map<String, dynamic>;
                         return ListTile(
                           leading: Text(
                             '#${index + 1}',
-                            style: const TextStyle(
-                              fontSize: 24,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.amber,
-                            ),
+                            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.amber),
                           ),
                           title: Text(
-                            nickname,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                            ),
+                            scoreData['nickname'] ?? 'Ẩn danh',
+                            style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
                           ),
                           trailing: Text(
-                            bestScore.toString(),
-                            style: const TextStyle(
-                              color: Colors.cyanAccent,
-                              fontSize: 22,
-                              fontWeight: FontWeight.bold,
-                            ),
+                            scoreData['bestScore'].toString(),
+                            style: TextStyle(color: Colors.cyanAccent, fontSize: 22, fontWeight: FontWeight.bold),
                           ),
                         );
                       },
@@ -85,11 +69,11 @@ class LeaderboardOverlay extends StatelessWidget {
                   },
                 ),
               ),
-              const SizedBox(height: 40),
+              SizedBox(height: 40),
               ElevatedButton(
                 onPressed: () {
                   game.overlays.remove('Leaderboard');
-                  game.showMainMenu();
+                  game.showMainMenu(); 
                 },
                 child: const Text('Quay lại'),
               ),

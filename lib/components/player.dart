@@ -17,6 +17,7 @@ import 'package:Phoenix_Blast/my_game.dart';
 import 'package:flame/collisions.dart';
 import 'package:flame/components.dart';
 import 'package:flame/effects.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 class Player extends SpriteAnimationComponent
@@ -40,7 +41,7 @@ class Player extends SpriteAnimationComponent
   bool _isInvincible = false;
   late Timer _invincibilityTimer;
 
-  Player() {
+  Player({required String skin}) : _skin = skin {
     _explosionTimer = Timer(0.15, onTick: _createRandomExplosion, repeat: true, autoStart: false);
     _laserPowerupTimer = Timer(4.0, onTick: () {}, autoStart: false);
     _shieldPowerupTimer = Timer(4.0, onTick: _deactivateShield, autoStart: false);
@@ -53,8 +54,6 @@ class Player extends SpriteAnimationComponent
 
   @override
   FutureOr<void> onLoad() async {
-    _skin = game.playerSkins[game.playerSkinIndex];
-
     List<Sprite> animationSprites = [];
     if (_skin == 'vang') {
       animationSprites = await Future.wait([
@@ -66,6 +65,26 @@ class Player extends SpriteAnimationComponent
       animationSprites = await Future.wait([
         game.loadSprite('maybay1.png'),
         game.loadSprite('maybay2.png'),
+      ]);
+    } else if (_skin == 'player_red_off') {
+      animationSprites = await Future.wait([
+        game.loadSprite('player_red_on0.png'),
+        game.loadSprite('player_red_on1.png'),
+      ]);
+    } else if (_skin == 'player_blue_off') {
+      animationSprites = await Future.wait([
+        game.loadSprite('player_blue_on0.png'),
+        game.loadSprite('player_blue_on1.png'),
+      ]);
+    } else if (_skin == 'chienco_hong') {
+      animationSprites = await Future.wait([
+        game.loadSprite('chienco_hong1.png'),
+        game.loadSprite('chienco_hong2.png'),
+      ]);
+    } else if (_skin == 'chienco_xanh') {
+      animationSprites = await Future.wait([
+        game.loadSprite('chienco_xanh1.png'),
+        game.loadSprite('chienco_xanh2.png'),
       ]);
     }
 
@@ -123,7 +142,33 @@ class Player extends SpriteAnimationComponent
 
   void _fireLaser() {
     game.audioManager.playSound('laser');
-    game.add(Laser(position: position.clone() + Vector2(0, -size.y / 2)));
+
+    final skill = game.currentSkill;
+
+    if (skill == null || skill.isEmpty) {
+        game.add(Laser(position: position.clone() + Vector2(0, -size.y / 2), spriteName: 'laser.png'));
+    } else {
+        switch (skill) {
+            case 'skill_samxet':
+                game.add(Laser(position: position.clone() + Vector2(0, -size.y / 2), spriteName: 'skill_samxet.png'));
+                break;
+            case 'skill_hinhtron':
+                game.add(BombExplosion(position: position.clone()));
+                break;
+            case 'skill_cauvong':
+                for (var i = -1; i <= 1; i++) {
+                    game.add(Laser(
+                        position: position.clone() + Vector2(0, -size.y / 2),
+                        angle: i * 15 * degrees2Radians,
+                        spriteName: 'skill_cauvong.png',
+                    ));
+                }
+                break;
+            default:
+                game.add(Laser(position: position.clone() + Vector2(0, -size.y / 2), spriteName: 'laser.png'));
+        }
+    }
+
     if (_laserPowerupTimer.isRunning()) {
       game.add(Laser(position: position.clone() + Vector2(0, -size.y / 2), angle: 15 * degrees2Radians));
       game.add(Laser(position: position.clone() + Vector2(0, -size.y / 2), angle: -15 * degrees2Radians));
@@ -186,12 +231,7 @@ class Player extends SpriteAnimationComponent
           _laserPowerupTimer.start();
           break;
         case PickupType.bomb:
-          game.children.whereType<Asteroid>().forEach((asteroid) => asteroid.selfDestruct());
-          game.children.whereType<Monster>().forEach((monster) => monster.takeDamage());
-          final boss = game.children.whereType<BossMonster>().firstOrNull;
-          if (boss != null) {
-            boss.takeDamage(amount: 10);
-          }
+          game.add(BombExplosion(position: position.clone()));
           break;
         case PickupType.heart:
           lives++;
@@ -207,6 +247,8 @@ class Player extends SpriteAnimationComponent
       }
     } else if (other is Coin) {
       game.audioManager.playSound('collect');
+      game.addSessionCoins(other.value);
+      other.removeFromParent();
     }
   }
 
@@ -219,5 +261,59 @@ class Player extends SpriteAnimationComponent
     _keyboardMovement.y += keysPressed.contains(LogicalKeyboardKey.arrowUp) ? -1 : 0;
     _keyboardMovement.y += keysPressed.contains(LogicalKeyboardKey.arrowDown) ? 1 : 0;
     return true;
+  }
+}
+
+class BombExplosion extends CircleComponent
+    with HasGameReference<MyGame>, CollisionCallbacks {
+  BombExplosion({required super.position})
+      : super(
+          anchor: Anchor.center,
+          radius: 1.0,
+          paint: Paint()..color = Colors.white,
+        );
+
+  @override
+  Future<void> onLoad() async {
+    add(CircleHitbox(collisionType: CollisionType.passive));
+
+    add(
+      ScaleEffect.to(
+        Vector2.all(350),
+        EffectController(
+          duration: 0.7,
+          curve: Curves.easeOutCubic,
+        ),
+      ),
+    );
+
+    add(
+      SequenceEffect([
+        OpacityEffect.fadeOut(
+          EffectController(duration: 0.8, curve: Curves.easeIn),
+        ),
+        RemoveEffect(),
+      ]),
+    );
+  }
+
+  @override
+  void onCollisionStart(
+      Set<Vector2> intersectionPoints, PositionComponent other) {
+    super.onCollisionStart(intersectionPoints, other);
+
+    if (other is Player || other is Pickup || other is Coin) {
+      return;
+    }
+
+    if (other is Asteroid) {
+      other.selfDestruct();
+    } else if (other is Monster) {
+      other.takeDamage(fromBomb: true);
+    } else if (other is BossMonster) {
+      other.takeDamage(amount: 25);
+    } else if (other is MonsterLaser || other is RedLaser) {
+      other.removeFromParent();
+    }
   }
 }
