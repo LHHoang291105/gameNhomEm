@@ -40,7 +40,10 @@ class Player extends SpriteAnimationComponent
   bool _isInvincible = false;
   late Timer _invincibilityTimer;
 
-  Player({required String skin}) : _skin = skin {
+  Player({required String skin, int? lives}) : _skin = skin {
+    if (lives != null) {
+      this.lives = lives;
+    }
     _explosionTimer = Timer(0.15, onTick: _createRandomExplosion, repeat: true, autoStart: false);
     _laserPowerupTimer = Timer(4.0, onTick: () {}, autoStart: false);
     _shieldPowerupTimer = Timer(4.0, onTick: _deactivateShield, autoStart: false);

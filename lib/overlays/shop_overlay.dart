@@ -164,11 +164,11 @@ class _ShopOverlayState extends State<ShopOverlay> with SingleTickerProviderStat
         child: Column(
           children: [
             _buildShopItem('vang', 'Phi Thuyền Vàng', 0, 'skin', skinsOwned, currentSkin, playerData['coins'] ?? 0),
-            _buildShopItem('maybay', 'Phi Thuyền Tím', 100, 'skin', skinsOwned, currentSkin, playerData['coins'] ?? 0),
-            _buildShopItem('player_red_off', 'Chiến Cơ Đỏ', 100, 'skin', skinsOwned, currentSkin, playerData['coins'] ?? 0),
-            _buildShopItem('player_blue_off', 'Chiến Cơ Xanh Lam', 100, 'skin', skinsOwned, currentSkin, playerData['coins'] ?? 0),
-            _buildShopItem('chienco_hong', 'Chiến Cơ Hồng', 150, 'skin', skinsOwned, currentSkin, playerData['coins'] ?? 0),
-            _buildShopItem('chienco_xanh', 'Chiến Cơ Xanh Neon', 150, 'skin', skinsOwned, currentSkin, playerData['coins'] ?? 0),
+            _buildShopItem('maybay', 'Phi Thuyền Tím', 0, 'skin', skinsOwned, currentSkin, playerData['coins'] ?? 0),
+            _buildShopItem('player_red_off', 'Chiến Cơ Đỏ', 2000, 'skin', skinsOwned, currentSkin, playerData['coins'] ?? 0),
+            _buildShopItem('player_blue_off', 'Chiến Cơ Xanh Lam', 3000, 'skin', skinsOwned, currentSkin, playerData['coins'] ?? 0),
+            _buildShopItem('chienco_hong', 'Chiến Cơ Hồng', 4000, 'skin', skinsOwned, currentSkin, playerData['coins'] ?? 0),
+            _buildShopItem('chienco_xanh', 'Chiến Cơ Xanh Neon', 5000, 'skin', skinsOwned, currentSkin, playerData['coins'] ?? 0),
           ],
         ),
       ),
@@ -184,9 +184,9 @@ class _ShopOverlayState extends State<ShopOverlay> with SingleTickerProviderStat
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
-            _buildShopItem('skill_samxet', 'Sấm Sét', 500, 'skill', skillsOwned, currentSkill, playerData['coins'] ?? 0, description: 'Tia sét hủy diệt kẻ thù trên đường thẳng.'),
-            _buildShopItem('skill_hinhtron', 'Vòng Tròn Hủy Diệt', 800, 'skill', skillsOwned, currentSkill, playerData['coins'] ?? 0, description: 'Tạo một vụ nổ lớn xung quanh phi thuyền.'),
-            _buildShopItem('skill_cauvong', 'Laser Cầu Vồng', 1200, 'skill', skillsOwned, currentSkill, playerData['coins'] ?? 0, description: 'Bắn ra những tia laser mạnh mẽ, đa sắc màu.'),
+            _buildShopItem('skill_samxet', 'Sấm Sét', 2000, 'skill', skillsOwned, currentSkill, playerData['coins'] ?? 0, description: 'Tia sét hủy diệt kẻ thù trên đường thẳng.'),
+            _buildShopItem('skill_hinhtron', 'Vòng Tròn Hủy Diệt', 4000, 'skill', skillsOwned, currentSkill, playerData['coins'] ?? 0, description: 'Tạo một vụ nổ lớn xung quanh phi thuyền.'),
+            _buildShopItem('skill_cauvong', 'Laser Cầu Vồng', 5000, 'skill', skillsOwned, currentSkill, playerData['coins'] ?? 0, description: 'Bắn ra những tia laser mạnh mẽ, đa sắc màu.'),
           ],
         ),
       ),

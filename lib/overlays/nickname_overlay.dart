@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:Phoenix_Blast/my_game.dart';
-import 'package:Phoenix_Blast/services/firebase_service.dart';
 
 class NicknameOverlay extends StatefulWidget {
   final MyGame game;
@@ -12,7 +11,6 @@ class NicknameOverlay extends StatefulWidget {
 }
 
 class _NicknameOverlayState extends State<NicknameOverlay> {
-  final FirebaseService _firebaseService = FirebaseService();
   final TextEditingController _nicknameController = TextEditingController();
   bool _isLoading = false;
 
@@ -28,7 +26,7 @@ class _NicknameOverlayState extends State<NicknameOverlay> {
       _isLoading = true;
     });
 
-    await _firebaseService.setNickname(_nicknameController.text);
+    await widget.game.setNickname(_nicknameController.text);
 
     if (mounted) {
         setState(() {

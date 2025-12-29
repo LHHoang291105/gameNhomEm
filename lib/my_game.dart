@@ -22,6 +22,7 @@ import 'package:flame/effects.dart';
 import 'package:flame/events.dart';
 import 'package:flame/flame.dart';
 import 'package:flame/game.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 class MyGame extends FlameGame
@@ -85,6 +86,7 @@ class MyGame extends FlameGame
 
   final FirebaseService _firebaseService = FirebaseService();
   bool isOnline = false;
+  final ValueNotifier<String?> nicknameNotifier = ValueNotifier(null);
 
   @override
   Future<void> onLoad() async {
@@ -198,12 +200,22 @@ class MyGame extends FlameGame
       currentSkin = playerData['currentSkin'] ?? 'vang';
       currentSkill = playerData['currentSkill'] ?? '';
       skinsOwned = (playerData['skinsOwned'] as Map<String, dynamic>).keys.toList();
+      nicknameNotifier.value = _nickname;
+    }
+  }
+
+  Future<void> setNickname(String newNickname) async {
+    _nickname = newNickname;
+    nicknameNotifier.value = _nickname;
+    if (isOnline) {
+      await _firebaseService.setNickname(newNickname);
     }
   }
 
   void startOffline() {
     isOnline = false;
     _nickname = 'Offline';
+    nicknameNotifier.value = _nickname;
     _totalCoins = 0;
     currentSkin = 'vang';
     currentSkill = '';
@@ -229,6 +241,7 @@ class MyGame extends FlameGame
     await _firebaseService.signOut();
     isOnline = false;
     _nickname = null;
+    nicknameNotifier.value = null;
     _nicknameDisplay = null;
     _totalCoins = 0;
     _sessionCoins = 0;
@@ -479,8 +492,9 @@ class MyGame extends FlameGame
   }
 
   void _bringPlayerBack() {
+    final currentLives = player.lives;
     player.removeFromParent(); 
-    _createPlayer();
+    _createPlayer(lives: currentLives);
     player.position = Vector2(size.x / 2, size.y + player.size.y * 2);
     player.opacity = 0;
     player.addAll([
@@ -510,8 +524,8 @@ class MyGame extends FlameGame
     _createPauseButton(_safeTop);
   }
 
-  Future<void> _createPlayer() async {
-    player = Player(skin: currentSkin);
+  Future<void> _createPlayer({int? lives}) async {
+    player = Player(skin: currentSkin, lives: lives);
     player.position = Vector2(size.x / 2, size.y * 0.8);
     await add(player);
   }
