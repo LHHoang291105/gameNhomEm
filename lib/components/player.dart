@@ -3,7 +3,6 @@ import 'dart:math';
 import 'dart:ui';
 
 import 'package:Phoenix_Blast/components/asteroid.dart';
-import 'package:Phoenix_Blast/components/bomb.dart';
 import 'package:Phoenix_Blast/components/boss_monster.dart';
 import 'package:Phoenix_Blast/components/coin.dart';
 import 'package:Phoenix_Blast/components/explosion.dart';
@@ -146,11 +145,11 @@ class Player extends SpriteAnimationComponent
     final skill = game.currentSkill;
 
     if (skill == null || skill.isEmpty) {
-        game.add(Laser(position: position.clone() + Vector2(0, -size.y / 2), spriteName: 'laser.png'));
+        game.add(Laser(position: position.clone() + Vector2(0, -size.y / 2), spriteName: 'laser.png', damage: 1));
     } else {
         switch (skill) {
             case 'skill_samxet':
-                game.add(Laser(position: position.clone() + Vector2(0, -size.y / 2), spriteName: 'skill_samxet.png'));
+                game.add(Laser(position: position.clone() + Vector2(0, -size.y / 2), spriteName: 'skill_samxet.png', damage: 2));
                 break;
             case 'skill_hinhtron':
                 game.add(HinhtronProjectile(position: position.clone() + Vector2(0, -size.y / 2)));
@@ -161,11 +160,12 @@ class Player extends SpriteAnimationComponent
                         position: position.clone() + Vector2(0, -size.y / 2),
                         angle: i * 15 * degrees2Radians,
                         spriteName: 'skill_cauvong.png',
+                        damage: 1,
                     ));
                 }
                 break;
             default:
-                game.add(Laser(position: position.clone() + Vector2(0, -size.y / 2), spriteName: 'laser.png'));
+                game.add(Laser(position: position.clone() + Vector2(0, -size.y / 2), spriteName: 'laser.png', damage: 1));
         }
     }
 
@@ -267,6 +267,7 @@ class Player extends SpriteAnimationComponent
 class HinhtronProjectile extends SpriteComponent
     with HasGameReference<MyGame>, CollisionCallbacks {
   final double _speed = 600;
+  final int damage = 3;
 
   HinhtronProjectile({required super.position})
       : super(
@@ -277,7 +278,7 @@ class HinhtronProjectile extends SpriteComponent
   @override
   Future<void> onLoad() async {
     sprite = await game.loadSprite('skill_hinhtron.png');
-    add(CircleHitbox(collisionType: CollisionType.passive));
+    add(CircleHitbox());
   }
 
   @override
@@ -304,11 +305,11 @@ class HinhtronProjectile extends SpriteComponent
     game.audioManager.playSound('explosion');
 
     if (other is Asteroid) {
-      other.selfDestruct();
+      other.takeDamage(amount: damage);
     } else if (other is Monster) {
-      other.takeDamage(fromBomb: true);
+      other.takeDamage(amount: damage);
     } else if (other is BossMonster) {
-      other.takeDamage(amount: 5);
+      other.takeDamage(amount: damage);
     } else if (other is MonsterLaser || other is RedLaser) {
       other.removeFromParent();
     }
@@ -326,7 +327,7 @@ class BombExplosion extends SpriteComponent
   @override
   Future<void> onLoad() async {
     sprite = await game.loadSprite('bomb.png');
-    add(CircleHitbox(collisionType: CollisionType.passive));
+    add(CircleHitbox(collisionType: CollisionType.active));
 
     game.audioManager.playSound('explosion');
 
@@ -376,7 +377,7 @@ class BombExplosion extends SpriteComponent
     } else if (other is Monster) {
       other.takeDamage(fromBomb: true);
     } else if (other is BossMonster) {
-      other.takeDamage(amount: 25);
+      other.takeDamage(amount: 10);
     } else if (other is MonsterLaser || other is RedLaser) {
       other.removeFromParent();
     }

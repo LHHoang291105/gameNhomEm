@@ -15,7 +15,6 @@ import 'package:Phoenix_Blast/components/player.dart';
 import 'package:Phoenix_Blast/components/red_dust.dart';
 import 'package:Phoenix_Blast/components/shoot_button.dart';
 import 'package:Phoenix_Blast/components/star.dart';
-import 'package:Phoenix_Blast/components/bomb.dart';
 import 'package:Phoenix_Blast/components/explosion.dart';
 import 'package:Phoenix_Blast/services/firebase_service.dart';
 import 'package:flame/components.dart';
@@ -288,13 +287,21 @@ class MyGame extends FlameGame
         } else {
           spawnRate = 0.8 + _random.nextDouble() * 0.8;
         }
+      } else if (currentLevel == 3) {
+        // Điều chỉnh màn 3 xuất hiện cùng mức độ với màn 2
+        if (_distanceTraveled < 40000) {
+          spawnRate = 1.2 + _random.nextDouble() * 1.0;
+        } else {
+          spawnRate = 0.8 + _random.nextDouble() * 0.8;
+        }
       } else {
         spawnRate = 0.8 + _random.nextDouble() * 1.0;
       }
 
       add(Monster(position: _generateSpawnPosition()));
 
-      if (currentLevel == 3 && _random.nextDouble() < 0.3) { 
+      // Giảm tỷ lệ quái phụ ở màn 3 để giống màn 2 hơn
+      if (currentLevel == 3 && _random.nextDouble() < 0.1) { 
         add(Monster(position: _generateSpawnPosition()));
       }
 
@@ -371,7 +378,6 @@ class MyGame extends FlameGame
             c is MonsterLaser ||
             c is Laser ||
             c is RedLaser ||
-            c is Bomb ||
             c is Explosion ||
             c is Coin ||
             (c is RectangleComponent && c.priority == 100) ||

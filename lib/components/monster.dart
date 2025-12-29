@@ -5,15 +5,17 @@ import 'package:Phoenix_Blast/components/coin.dart';
 import 'package:Phoenix_Blast/components/explosion.dart';
 import 'package:Phoenix_Blast/components/monster_laser.dart';
 import 'package:Phoenix_Blast/components/pickup.dart';
-import 'package:Phoenix_Blast/components/player.dart';
 import 'package:Phoenix_Blast/my_game.dart';
 import 'package:flame/collisions.dart';
 import 'package:flame/components.dart';
+import 'package:flame/effects.dart';
+import 'package:flutter/material.dart';
 
 class Monster extends SpriteAnimationComponent with HasGameReference<MyGame> {
   final Random _random = Random();
   late Timer _fireTimer;
   late Vector2 _velocity;
+  late int _health;
   
   final double _baseFallSpeed = 70.0;
   
@@ -32,19 +34,25 @@ class Monster extends SpriteAnimationComponent with HasGameReference<MyGame> {
     
     double minFallSpeed = 40.0;
     double maxFallSpeedAdd = 50.0;
+
     if (game.currentLevel == 2) {
+      _health = 2 + _random.nextInt(3); 
       minFallSpeed = 70.0;
       maxFallSpeedAdd = 100.0;
     } else if (game.currentLevel == 3) {
+      _health = 4 + _random.nextInt(3); 
       minFallSpeed = 70.0;
       maxFallSpeedAdd = 110.0;
+    } else {
+      _health = 1;
     }
     
     final randomFallSpeed = minFallSpeed + _random.nextDouble() * maxFallSpeedAdd;
     _velocity = Vector2(0, randomFallSpeed);
 
     if (game.currentLevel >= 2) {
-      _amplitude = 40 + _random.nextDouble() * 60;
+      // Tăng biên độ di chuyển rộng hơn để bao phủ toàn màn hình
+      _amplitude = 80 + _random.nextDouble() * 100;
       _frequency = 1 + _random.nextDouble() * 1.4;
       _time = _random.nextDouble() * pi * 2;
     }
@@ -104,6 +112,8 @@ class Monster extends SpriteAnimationComponent with HasGameReference<MyGame> {
 
     if (_amplitude > 0) {
       position.x += sin(_time * _frequency) * _amplitude * dt;
+      // Giới hạn biên màn hình để không bay quá xa mất tiêu
+      position.x = position.x.clamp(size.x / 2, game.size.x - size.x / 2);
     }
 
     if (position.y > game.size.y + size.y) {
@@ -121,21 +131,30 @@ class Monster extends SpriteAnimationComponent with HasGameReference<MyGame> {
     }
   }
   
-  void takeDamage({bool fromBomb = false}) {
+  void takeDamage({int amount = 1, bool fromBomb = false}) {
     if (fromBomb) {
       selfDestruct();
       return;
     }
 
-    removeFromParent();
-    game.add(Explosion(
-      position: position.clone(),
-      explosionSize: size.x,
-      explosionType: ExplosionType.fire,
-    ));
-    game.incrementScore(10);
-    _maybeDropPickup();
-    _dropCoins(3);
+    _health -= amount;
+    
+    if (_health <= 0) {
+      removeFromParent();
+      game.add(Explosion(
+        position: position.clone(),
+        explosionSize: size.x,
+        explosionType: ExplosionType.fire,
+      ));
+      game.incrementScore(10);
+      _maybeDropPickup();
+      _dropCoins(3);
+    } else {
+      add(ColorEffect(
+        const Color(0xFFFF0000),
+        EffectController(duration: 0.1, reverseDuration: 0.1),
+      ));
+    }
   }
 
   void _maybeDropPickup() {

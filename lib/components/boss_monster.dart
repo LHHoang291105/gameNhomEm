@@ -26,9 +26,10 @@ class BossMonster extends SpriteAnimationComponent with HasGameReference<MyGame>
   
   final Vector2 _originalPosition = Vector2.zero();
   late RectangleComponent _healthBarFill;
+  final double _healthBarWidth = 150.0;
 
   BossMonster({required super.position}) 
-      : super(size: Vector2.all(200), anchor: Anchor.center, priority: 10);
+      : super(size: Vector2.all(200), anchor: Anchor.center, priority: 1);
   @override
   FutureOr<void> onLoad() async {
     final sprites = [
@@ -66,7 +67,7 @@ class BossMonster extends SpriteAnimationComponent with HasGameReference<MyGame>
 
   void _createHealthBar() {
     final healthBarBg = RectangleComponent(
-      size: Vector2(250, 15),
+      size: Vector2(_healthBarWidth, 10),
       position: Vector2(size.x / 2, -30),
       anchor: Anchor.center,
       paint: Paint()..color = Colors.grey.withOpacity(0.5),
@@ -74,7 +75,7 @@ class BossMonster extends SpriteAnimationComponent with HasGameReference<MyGame>
     add(healthBarBg);
 
     _healthBarFill = RectangleComponent(
-      size: Vector2(250, 15),
+      size: Vector2(_healthBarWidth, 10),
       position: Vector2(0, 0),
       paint: Paint()..color = Colors.green,
     );
@@ -87,7 +88,8 @@ class BossMonster extends SpriteAnimationComponent with HasGameReference<MyGame>
     if (!_isMovingToCenter && !_isTransitioning && !_isMidPhaseTransitioning) {
       if (!_isEnraged) {
         _fireTimer.update(dt);
-        position.x = game.size.x / 2 + sin(game.currentTime() * 1.5) * 80;
+        // Tăng biên độ di chuyển ngang của Boss lên 130 để bao phủ rộng hơn
+        position.x = game.size.x / 2 + sin(game.currentTime() * 1.5) * 130;
       } else {
         _enragedCycleTimer.update(dt);
         if (_enragedCycleTimer.current >= 5.0 && _canShoot) {
@@ -185,7 +187,7 @@ class BossMonster extends SpriteAnimationComponent with HasGameReference<MyGame>
     if (amount == 1) _hitCount++;
     if (_hitCount >= 10) { _hitCount = 0; _dropRandomPickup(); }
     
-    _healthBarFill.size.x = (health / 100).clamp(0, 1) * 250;
+    _healthBarFill.size.x = (health / 100).clamp(0, 1) * _healthBarWidth;
     
     if (health <= 20) {
       _healthBarFill.paint.color = Colors.red;

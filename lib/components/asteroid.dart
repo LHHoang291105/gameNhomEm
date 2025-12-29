@@ -36,8 +36,12 @@ class Asteroid extends SpriteComponent with HasGameReference<MyGame> {
     _spinSpeed = _random.nextDouble() * 1.0 - 0.5;
 
     _asteroidType = _random.nextInt(3) + 1;
-    double baseHealth = (_asteroidType == 1) ? 3.0 : 2.0;
-    _health = size / _maxSize * baseHealth;
+    
+    if (isFragment) {
+      _health = 1; 
+    } else {
+      _health = (_asteroidType == 1) ? 3.0 : 2.0;
+    }
 
     add(CircleHitbox(collisionType: CollisionType.passive));
   }
@@ -73,21 +77,19 @@ class Asteroid extends SpriteComponent with HasGameReference<MyGame> {
   }
 
   void _handleScreenBounds() {
-    // Xóa ngay nếu trôi quá đáy màn hình 100 pixel
     if (position.y > game.size.y + 100) {
       removeFromParent();
       return;
     }
 
-    // Giới hạn biên ngang: nếu bay quá xa sang 2 bên cũng dọn dẹp (đặc biệt cho mảnh vỡ)
     if (position.x < -200 || position.x > game.size.x + 200) {
       removeFromParent();
     }
   }
 
-  void takeDamage() {
+  void takeDamage({int amount = 1}) {
     game.audioManager.playSound('hit');
-    _health--;
+    _health -= amount;
 
     if (_health <= 0) {
       game.incrementScore(2);
