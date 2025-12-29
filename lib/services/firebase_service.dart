@@ -36,10 +36,10 @@ class FirebaseService {
         await ensurePlayerDoc(user);
       }
 
-      debugPrint("Đăng nhập thành công: ${user?.displayName}");
+      debugPrint("Đăng nhập thành công: \${user?.displayName}");
       return user;
     } catch (e) {
-      debugPrint("Lỗi khi đăng nhập với Google: $e");
+      debugPrint("Lỗi khi đăng nhập với Google: \$e");
       return null;
     }
   }
@@ -55,7 +55,7 @@ class FirebaseService {
     final snap = await ref.get();
 
     if (!snap.exists) {
-      debugPrint("Tạo tài liệu mới cho người dùng: ${user.uid}");
+      debugPrint("Tạo tài liệu mới cho người dùng: \${user.uid}");
       await ref.set({
         'email': user.email,
         'nickname': '',
@@ -125,22 +125,28 @@ class FirebaseService {
     try {
       await _firestore.runTransaction((transaction) async {
         final snapshot = await transaction.get(playerDocRef);
-        
+        final data = snapshot.data();
+
         var updates = <String, dynamic>{
           'coins': FieldValue.increment(coinsEarned),
+          'lastScore': score,
         };
 
         if (isWin) {
-          final bestScore = snapshot.data()?['bestScore'] ?? 0;
-          if (score > bestScore) {
-            updates['bestScore'] = score;
-          }
+          updates['wins'] = FieldValue.increment(1);
+        } else {
+          updates['losses'] = FieldValue.increment(1);
+        }
+
+        final bestScore = data?['bestScore'] ?? 0;
+        if (score > bestScore) {
+          updates['bestScore'] = score;
         }
         
         transaction.update(playerDocRef, updates);
       });
     } catch (e) {
-      debugPrint("Lỗi khi xử lý cuối game: $e");
+      debugPrint("Lỗi khi xử lý cuối game: \$e");
     }
   }
 
@@ -152,21 +158,26 @@ class FirebaseService {
     try {
       await _firestore.runTransaction((transaction) async {
         final snapshot = await transaction.get(playerDocRef);
+
+        if (!snapshot.exists || snapshot.data() == null) {
+          throw Exception("Không tìm thấy dữ liệu người chơi.");
+        }
+        
         final data = snapshot.data()!;
-        final currentCoins = data['coins'] as int;
+        final currentCoins = (data['coins'] ?? 0) as int;
 
         if (currentCoins < price) {
           throw Exception('Không đủ xu!');
         }
-
+        
         transaction.update(playerDocRef, {
-          'coins': currentCoins - price,
+          'coins': FieldValue.increment(-price),
           '$itemField.$itemId': true,
         });
       });
       return true;
     } catch (e) {
-      debugPrint("Lỗi khi mua vật phẩm: $e");
+      debugPrint("Lỗi khi mua vật phẩm: \$e");
       return false;
     }
   }
@@ -180,7 +191,7 @@ class FirebaseService {
       await playerDocRef.update({currentItemField: itemId});
       return true;
     } catch (e) {
-      debugPrint("Lỗi khi trang bị vật phẩm: $e");
+      debugPrint("Lỗi khi trang bị vật phẩm: \$e");
       return false;
     }
   }

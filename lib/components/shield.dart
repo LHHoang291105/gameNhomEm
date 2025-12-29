@@ -24,9 +24,9 @@ class Shield extends SpriteComponent
     add(CircleHitbox());
 
     final ScaleEffect pulsatingEffect = ScaleEffect.to(
-      Vector2.all(1.1),
+      Vector2.all(0.8),
       EffectController(
-        duration: 0.6,
+        duration: 0.4,
         alternate: true,
         infinite: true,
         curve: Curves.easeInOut,

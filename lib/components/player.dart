@@ -153,7 +153,7 @@ class Player extends SpriteAnimationComponent
                 game.add(Laser(position: position.clone() + Vector2(0, -size.y / 2), spriteName: 'skill_samxet.png'));
                 break;
             case 'skill_hinhtron':
-                game.add(BombExplosion(position: position.clone()));
+                game.add(HinhtronProjectile(position: position.clone() + Vector2(0, -size.y / 2)));
                 break;
             case 'skill_cauvong':
                 for (var i = -1; i <= 1; i++) {
@@ -264,33 +264,98 @@ class Player extends SpriteAnimationComponent
   }
 }
 
-class BombExplosion extends CircleComponent
+class HinhtronProjectile extends SpriteComponent
     with HasGameReference<MyGame>, CollisionCallbacks {
-  BombExplosion({required super.position})
+  final double _speed = 600;
+
+  HinhtronProjectile({required super.position})
       : super(
+          size: Vector2.all(30),
           anchor: Anchor.center,
-          radius: 1.0,
-          paint: Paint()..color = Colors.white,
         );
 
   @override
   Future<void> onLoad() async {
+    sprite = await game.loadSprite('skill_hinhtron.png');
+    add(CircleHitbox(collisionType: CollisionType.passive));
+  }
+
+  @override
+  void update(double dt) {
+    super.update(dt);
+    position.y -= _speed * dt;
+
+    if (position.y < -size.y) {
+      removeFromParent();
+    }
+  }
+
+  @override
+  void onCollisionStart(
+      Set<Vector2> intersectionPoints, PositionComponent other) {
+    super.onCollisionStart(intersectionPoints, other);
+
+    if (other is Player || other is Pickup || other is Coin) {
+      return;
+    }
+
+    game.add(Explosion(position: other.center, explosionSize: 60, explosionType: ExplosionType.fire));
+    removeFromParent();
+    game.audioManager.playSound('explosion');
+
+    if (other is Asteroid) {
+      other.selfDestruct();
+    } else if (other is Monster) {
+      other.takeDamage(fromBomb: true);
+    } else if (other is BossMonster) {
+      other.takeDamage(amount: 5);
+    } else if (other is MonsterLaser || other is RedLaser) {
+      other.removeFromParent();
+    }
+  }
+}
+
+class BombExplosion extends SpriteComponent
+    with HasGameReference<MyGame>, CollisionCallbacks {
+  BombExplosion({required super.position})
+      : super(
+          anchor: Anchor.center,
+          size: Vector2.all(10.0),
+        );
+
+  @override
+  Future<void> onLoad() async {
+    sprite = await game.loadSprite('bomb.png');
     add(CircleHitbox(collisionType: CollisionType.passive));
 
+    game.audioManager.playSound('explosion');
+
     add(
-      ScaleEffect.to(
-        Vector2.all(350),
+      SizeEffect.to(
+        Vector2.all(300),
         EffectController(
-          duration: 0.7,
-          curve: Curves.easeOutCubic,
+          duration: 0.6,
+          curve: Curves.easeOutCirc,
         ),
       ),
     );
 
+    // Glow effect by flashing a color, then fade out.
     add(
       SequenceEffect([
+        ColorEffect(
+          Colors.yellow.withOpacity(0.8),
+          EffectController(
+            duration: 0.15,
+            alternate: true,
+            repeatCount: 2,
+          ),
+        ),
         OpacityEffect.fadeOut(
-          EffectController(duration: 0.8, curve: Curves.easeIn),
+          EffectController(
+            duration: 0.3,
+            curve: Curves.easeIn,
+          ),
         ),
         RemoveEffect(),
       ]),

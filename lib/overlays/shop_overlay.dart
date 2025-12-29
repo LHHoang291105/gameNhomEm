@@ -44,6 +44,7 @@ class _ShopOverlayState extends State<ShopOverlay> with SingleTickerProviderStat
       } else if (itemType == 'skill') {
         widget.game.currentSkill = itemId;
       }
+      await widget.game.updatePlayerData();
       _loadPlayerData();
     }
   }
@@ -197,18 +198,40 @@ class _ShopOverlayState extends State<ShopOverlay> with SingleTickerProviderStat
     final isEquipped = isOwned && currentItem == itemId;
 
     Widget button;
-    if (isEquipped) {
-      button = ElevatedButton(
-        onPressed: null, 
-        style: ElevatedButton.styleFrom(backgroundColor: Colors.grey),
-        child: const Text('Đang sử dụng'),
-      );
-    } else if (isOwned) {
-      button = ElevatedButton(
-        onPressed: () => _handleEquip(itemId, itemType),
-        style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
-        child: const Text('Sử dụng'),
-      );
+    String statusText = 'Giá: $price';
+    Color statusColor = Colors.yellowAccent;
+
+    if (isOwned) {
+      statusText = 'Đã sở hữu';
+      statusColor = Colors.greenAccent;
+
+      if (itemType == 'skin') {
+        button = ElevatedButton(
+          onPressed: null,
+          style: ElevatedButton.styleFrom(backgroundColor: Colors.grey),
+          child: const Text('Đã có'),
+        );
+      } else { // This is a skill
+        if (isEquipped) {
+          button = Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ElevatedButton(onPressed: null, style: ElevatedButton.styleFrom(backgroundColor: Colors.grey), child: const Text('Đang dùng')),
+              const SizedBox(width: 8),
+              InkWell(
+                onTap: () => _handleEquip('', 'skill'), // Unequip by equipping an empty skill
+                child: const Icon(Icons.cancel, color: Colors.redAccent),
+              )
+            ],
+          );
+        } else {
+          button = ElevatedButton(
+            onPressed: () => _handleEquip(itemId, itemType),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
+            child: const Text('Sử dụng'),
+          );
+        }
+      }
     } else {
       button = ElevatedButton(
         onPressed: userCoins >= price ? () => _handlePurchase(itemId, itemType, price) : null,
@@ -252,8 +275,8 @@ class _ShopOverlayState extends State<ShopOverlay> with SingleTickerProviderStat
                     ),
                   const SizedBox(height: 8),
                   Text(
-                    isOwned ? 'Đã sở hữu' : 'Giá: $price',
-                    style: TextStyle(fontSize: 16, color: isOwned ? Colors.greenAccent : Colors.yellowAccent),
+                    statusText,
+                    style: TextStyle(fontSize: 16, color: statusColor),
                   ),
                 ],
               ),

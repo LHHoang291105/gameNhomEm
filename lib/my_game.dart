@@ -321,17 +321,17 @@ class MyGame extends FlameGame
     }));
   }
 
-  void victory() async {
-    if (isOnline) {
-      await _firebaseService.onGameEnd(
-        isWin: true,
-        score: _score,
-        coinsEarned: _sessionCoins,
-      );
-      _totalCoins += _sessionCoins;
-    }
+  void victory() {
     pauseEngine();
     overlays.add('Victory');
+
+    if (isOnline) {
+      _firebaseService.onGameEnd(
+        isWin: true, 
+        score: _score, 
+        coinsEarned: _sessionCoins
+      );
+    }
   }
 
   void _updatePowerupsDisplay() {
@@ -774,17 +774,17 @@ class MyGame extends FlameGame
         ScaleEffect.to(Vector2.all(1.2), EffectController(duration: 0.05, alternate: true)));
   }
 
-  void playerDied() async {
+  void playerDied() {
+    pauseEngine();
+    overlays.add('GameOver');
+
     if (isOnline) {
-      await _firebaseService.onGameEnd(
+      _firebaseService.onGameEnd(
         isWin: false, 
         score: _score, 
         coinsEarned: _sessionCoins
       );
-      _totalCoins += _sessionCoins;
     }
-    overlays.add('GameOver');
-    pauseEngine();
   }
 
 
@@ -803,7 +803,10 @@ class MyGame extends FlameGame
     resumeEngine();
   }
 
-  void quitGame() {
+  void quitGame() async {
+    if (isOnline) {
+      await updatePlayerData();
+    }
     children
         .where((c) =>
             c is! CameraComponent && c is! AudioManager && c is! Star)

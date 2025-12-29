@@ -21,6 +21,7 @@ class _TitleOverlayState extends State<TitleOverlay> {
     'player_red_off'
   ];
   late int _playerSkinIndex;
+  bool _imagesPrecached = false;
 
   @override
   void initState() {
@@ -35,6 +36,17 @@ class _TitleOverlayState extends State<TitleOverlay> {
         });
       }
     });
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_imagesPrecached) {
+      for (final skinName in _playerSkins) {
+        precacheImage(AssetImage('assets/images/$skinName.png'), context);
+      }
+      _imagesPrecached = true;
+    }
   }
 
   @override
@@ -175,14 +187,21 @@ class _TitleOverlayState extends State<TitleOverlay> {
                 ),
                 const SizedBox(height: 10),
                 GestureDetector(
-                  onTap: () {
+                  onTap: () async {
                     if (isOwned) {
-                      widget.game.currentSkin = _playerSkins[_playerSkinIndex];
+                      final selectedSkin = _playerSkins[_playerSkinIndex];
+                      if (widget.game.currentSkin != selectedSkin) {
+                        await widget.game.updateCurrentSkin(selectedSkin);
+                      }
+                      
                       widget.game.audioManager.playSound('start');
                       widget.game.overlays.add('Countdown');
-                      setState(() {
-                        _opacity = 0.0;
-                      });
+
+                      if (mounted) {
+                        setState(() {
+                          _opacity = 0.0;
+                        });
+                      }
                     }
                   },
                   child: Opacity(
