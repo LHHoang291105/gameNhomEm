@@ -40,11 +40,11 @@ class Monster extends SpriteAnimationComponent with HasGameReference<MyGame> {
       minFallSpeed = 70.0;
       maxFallSpeedAdd = 100.0;
     } else if (game.currentLevel == 3) {
-      _health = 4 + _random.nextInt(3); 
+      _health = 3 + _random.nextInt(3); 
       minFallSpeed = 70.0;
       maxFallSpeedAdd = 110.0;
     } else {
-      _health = 1;
+      _health = 1 ;
     }
     
     final randomFallSpeed = minFallSpeed + _random.nextDouble() * maxFallSpeedAdd;
@@ -52,7 +52,7 @@ class Monster extends SpriteAnimationComponent with HasGameReference<MyGame> {
 
     if (game.currentLevel >= 2) {
       // Tăng biên độ di chuyển rộng hơn để bao phủ toàn màn hình
-      _amplitude = 80 + _random.nextDouble() * 100;
+      _amplitude = 100 + _random.nextDouble() * 120;
       _frequency = 1 + _random.nextDouble() * 1.4;
       _time = _random.nextDouble() * pi * 2;
     }
@@ -150,6 +150,7 @@ class Monster extends SpriteAnimationComponent with HasGameReference<MyGame> {
       _maybeDropPickup();
       _dropCoins(3);
     } else {
+      _dropCoins(1);
       add(ColorEffect(
         const Color(0xFFFF0000),
         EffectController(duration: 0.1, reverseDuration: 0.1),
@@ -180,11 +181,17 @@ class Monster extends SpriteAnimationComponent with HasGameReference<MyGame> {
   }
 
   void explodeSilently() {
-    removeFromParent();
-    game.add(Explosion(
-      position: position.clone(), 
-      explosionSize: size.x,
-      explosionType: ExplosionType.fire,
-    ));
+    _fireTimer.stop();
+    children.whereType<CircleHitbox>().forEach((hitbox) {
+      hitbox.collisionType = CollisionType.inactive;
+    });
+    add(
+      SequenceEffect([
+        OpacityEffect.fadeOut(
+          EffectController(duration: 0.15, alternate: true, repeatCount: 4),
+        ),
+        RemoveEffect(),
+      ]),
+    );
   }
 }

@@ -51,6 +51,9 @@ class MyGame extends FlameGame
   int currentLevel = 1;
   bool _levelTransitioning = false;
   bool _bossSpawned = false;
+  bool _isGameEnded = false;
+  bool _waitingForVictoryCoins = false;
+  int _victoryCoinCount = 0;
   SpriteComponent? _background;
 
   double _distanceTraveled = 0.0;
@@ -87,6 +90,7 @@ class MyGame extends FlameGame
   final FirebaseService _firebaseService = FirebaseService();
   bool isOnline = false;
   final ValueNotifier<String?> nicknameNotifier = ValueNotifier(null);
+  final ValueNotifier<bool> isSavingScore = ValueNotifier(false);
 
   @override
   Future<void> onLoad() async {
@@ -238,8 +242,10 @@ class MyGame extends FlameGame
   }
 
   void logout() async {
-    await _firebaseService.signOut();
-    isOnline = false;
+    if (isOnline) {
+      await _firebaseService.signOut();
+      isOnline = false;
+    }
     _nickname = null;
     nicknameNotifier.value = null;
     _nicknameDisplay = null;
@@ -281,8 +287,12 @@ class MyGame extends FlameGame
         }
 
         if (currentLevel < _maxLevel && _distanceTraveled >= currentTarget) {
-          _distanceTraveled = currentTarget;
-          _startLevelTransition();
+          if (currentLevel == 3 && !_bossSpawned) {
+             // Do not transition, wait for boss to be defeated.
+          } else {
+            _distanceTraveled = currentTarget;
+            _startLevelTransition();
+          }
         }
       }
     }
@@ -341,16 +351,43 @@ class MyGame extends FlameGame
     }));
   }
 
+  void bossDefeated() {
+    _waitingForVictoryCoins = true;
+    _victoryCoinCount = 30;
+    for (int i = 0; i < 30; i++) {
+      final coin = Coin(
+        value: 1, 
+        position: Vector2(size.x / 2, size.y / 2),
+        isVictoryCoin: true,
+      );
+      add(coin);
+    }
+  }
+
+  void decrementVictoryCoinCount() {
+    _victoryCoinCount--;
+    if (_victoryCoinCount <= 0 && _waitingForVictoryCoins) {
+      _waitingForVictoryCoins = false;
+      victory();
+    }
+  }
+
   void victory() {
+    if (_isGameEnded) return;
+    _isGameEnded = true;
+
+    if (player.isDestroyed) return;
     pauseEngine();
     overlays.add('Victory');
 
     if (isOnline) {
+      isSavingScore.value = true;
       _firebaseService.onGameEnd(
-        isWin: true, 
-        score: _score, 
-        coinsEarned: _sessionCoins
-      );
+        score: _score,
+        coinsEarned: _sessionCoins,
+      ).whenComplete(() {
+        isSavingScore.value = false;
+      });
     }
   }
 
@@ -367,6 +404,7 @@ class MyGame extends FlameGame
   }
 
   Future<void> startGame() async {
+    _isGameEnded = false;
     currentLevel = 1;
     _distanceTraveled = 0.0;
     _levelTransitioning = false;
@@ -525,7 +563,11 @@ class MyGame extends FlameGame
   }
 
   Future<void> _createPlayer({int? lives}) async {
-    player = Player(skin: currentSkin, lives: lives);
+    player = Player(
+      skin: currentSkin,
+      lives: lives,
+      currentSkill: currentSkill,
+    );
     player.position = Vector2(size.x / 2, size.y * 0.8);
     await add(player);
   }
@@ -588,8 +630,8 @@ class MyGame extends FlameGame
   void _createRedDustSpawner() {
     _redDustSpawner = SpawnComponent.periodRange(
         factory: (index) => RedDust(),
-        minPeriod: 0.6,
-        maxPeriod: 1.2,
+        minPeriod: 1.5,
+        maxPeriod: 2.5,
         autoStart: true);
     add(_redDustSpawner!);
   }
@@ -617,7 +659,7 @@ class MyGame extends FlameGame
 
   void _createStars() {
     if (children.whereType<Star>().isEmpty) {
-      for (int i = 0; i < 50; i++) {
+      for (int i = 0; i < 30; i++) {
         add(Star()..priority = -10);
       }
     }
@@ -795,37 +837,58 @@ class MyGame extends FlameGame
   }
 
   void playerDied() {
+    if (_isGameEnded) return;
+    _isGameEnded = true;
+
     pauseEngine();
     overlays.add('GameOver');
 
     if (isOnline) {
+      isSavingScore.value = true;
       _firebaseService.onGameEnd(
-        isWin: false, 
-        score: _score, 
-        coinsEarned: _sessionCoins
-      );
+        score: _score,
+        coinsEarned: _sessionCoins,
+      ).whenComplete(() {
+        isSavingScore.value = false;
+      });
     }
   }
 
 
   void restartGame() {
-    _levelTransitioning = false;
-    _distanceTraveled = 0.0;
-    currentLevel = 1;
-    _score = 0;
-    _sessionCoins = 0;
-    _bossSpawned = false;
-    children
-        .where((c) => c is! CameraComponent && c is! AudioManager)
-        .forEach((c) => c.removeFromParent());
-    _createStars();
-    startGame();
-    resumeEngine();
+    if (isOnline) {
+      // Reset online game
+      _levelTransitioning = false;
+      _distanceTraveled = 0.0;
+      currentLevel = 1;
+      _score = 0;
+      _sessionCoins = 0;
+      _bossSpawned = false;
+
+      children.where((c) => c is! CameraComponent && c is! AudioManager).forEach((c) => c.removeFromParent());
+      _createStars();
+      startGame();
+      resumeEngine();
+    } else {
+      // Reset offline game
+      _levelTransitioning = false;
+      _distanceTraveled = 0.0;
+      currentLevel = 1;
+      _score = 0;
+      _sessionCoins = 0;
+      _bossSpawned = false;
+
+      children.where((c) => c is! CameraComponent && c is! AudioManager).forEach((c) => c.removeFromParent());
+      _createStars();
+      startOffline(); // Re-initialize offline settings
+      startGame();
+      resumeEngine();
+    }
   }
 
-  void quitGame() async {
+  void quitGame() {
     if (isOnline) {
-      await updatePlayerData();
+      updatePlayerData();
     }
     children
         .where((c) =>

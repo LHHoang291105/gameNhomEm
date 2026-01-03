@@ -76,7 +76,7 @@ class Explosion extends PositionComponent with HasGameReference<MyGame> {
 
     final ParticleSystemComponent particles = ParticleSystemComponent(
       particle: Particle.generate(
-        count: 5 + _random.nextInt(3), // Tối ưu giảm số lượng hạt
+        count: 3 + _random.nextInt(2), // Tối ưu giảm số lượng hạt
         generator: (index) {
           return MovingParticle(
             child: CircleParticle(

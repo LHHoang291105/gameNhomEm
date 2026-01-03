@@ -202,8 +202,7 @@ class BossMonster extends SpriteAnimationComponent with HasGameReference<MyGame>
     }
 
     if (health <= 0) {
-      _dropCoins(20);
-      game.victory();
+      game.bossDefeated();
       removeFromParent();
       _explode();
     }

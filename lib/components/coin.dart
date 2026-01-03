@@ -9,10 +9,12 @@ class Coin extends SpriteAnimationComponent
     with HasGameReference<MyGame>, CollisionCallbacks {
   final int value;
   final double _speed = 250; // Tăng tốc độ rơi
+  final bool isVictoryCoin;
 
   Coin({
     required this.value,
     required super.position,
+    this.isVictoryCoin = false,
   }) : super(
           size: Vector2.all(30),
           anchor: Anchor.center,
@@ -56,5 +58,13 @@ class Coin extends SpriteAnimationComponent
       removeFromParent();
     }
     super.onCollisionStart(intersectionPoints, other);
+  }
+
+  @override
+  void onRemove() {
+    if (isVictoryCoin) {
+      game.decrementVictoryCoinCount();
+    }
+    super.onRemove();
   }
 }

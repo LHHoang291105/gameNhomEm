@@ -66,8 +66,6 @@ class FirebaseService {
         'currentSkin': 'vang',
         'skillsOwned': {},
         'currentSkill': '',
-        'wins': 0,
-        'losses': 0,
         'createdAt': FieldValue.serverTimestamp(),
         'lastLoginAt': FieldValue.serverTimestamp(),
       });
@@ -105,16 +103,7 @@ class FirebaseService {
     return doc.data();
   }
 
-  Stream<QuerySnapshot<Map<String, dynamic>>> top5Players() {
-    return _firestore
-        .collection('playerData')
-        .orderBy('bestScore', descending: true)
-        .limit(5)
-        .snapshots();
-  }
-
   Future<void> onGameEnd({
-    required bool isWin,
     required int score,
     required int coinsEarned,
   }) async {
@@ -131,12 +120,6 @@ class FirebaseService {
           'coins': FieldValue.increment(coinsEarned),
           'lastScore': score,
         };
-
-        if (isWin) {
-          updates['wins'] = FieldValue.increment(1);
-        } else {
-          updates['losses'] = FieldValue.increment(1);
-        }
 
         final bestScore = data?['bestScore'] ?? 0;
         if (score > bestScore) {

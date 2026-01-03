@@ -1,11 +1,9 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:Phoenix_Blast/my_game.dart';
-import 'package:Phoenix_Blast/services/firebase_service.dart';
 
 class LeaderboardOverlay extends StatelessWidget {
   final MyGame game;
-  final FirebaseService _firebaseService = FirebaseService();
 
   LeaderboardOverlay({super.key, required this.game});
 
@@ -30,7 +28,11 @@ class LeaderboardOverlay extends StatelessWidget {
               SizedBox(height: 40),
               Expanded(
                 child: StreamBuilder<QuerySnapshot>(
-                  stream: _firebaseService.top5Players(),
+                  stream: FirebaseFirestore.instance
+                      .collection('playerData')
+                      .orderBy('bestScore', descending: true)
+                      .limit(10)
+                      .snapshots(),
                   builder: (context, snapshot) {
                     if (snapshot.connectionState == ConnectionState.waiting) {
                       return const Center(child: CircularProgressIndicator());

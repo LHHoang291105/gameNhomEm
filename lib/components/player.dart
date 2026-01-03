@@ -16,6 +16,7 @@ import 'package:Phoenix_Blast/my_game.dart';
 import 'package:flame/collisions.dart';
 import 'package:flame/components.dart';
 import 'package:flame/effects.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -33,6 +34,7 @@ class Player extends SpriteAnimationComponent
   late Timer _shieldPowerupTimer;
   Shield? activeShield;
   late String _skin;
+  final String currentSkill;
 
   late Sprite _destructionSprite;
 
@@ -40,7 +42,11 @@ class Player extends SpriteAnimationComponent
   bool _isInvincible = false;
   late Timer _invincibilityTimer;
 
-  Player({required String skin, int? lives}) : _skin = skin {
+  Player({
+    required String skin,
+    int? lives,
+    required this.currentSkill,
+  }) : _skin = skin {
     if (lives != null) {
       this.lives = lives;
     }
@@ -53,6 +59,7 @@ class Player extends SpriteAnimationComponent
   bool get isLaserActive => _laserPowerupTimer.isRunning();
   double get laserRemainingTime => _laserPowerupTimer.limit - _laserPowerupTimer.current;
   bool get hasShield => activeShield != null;
+  bool get isDestroyed => _isDestroyed;
 
   @override
   FutureOr<void> onLoad() async {
@@ -144,37 +151,45 @@ class Player extends SpriteAnimationComponent
 
   void _fireLaser() {
     game.audioManager.playSound('laser');
+    final skill = currentSkill;
+    final spawnPos = position.clone() + Vector2(0, -size.y / 2);
 
-    final skill = game.currentSkill;
-
-    if (skill == null || skill.isEmpty) {
-        game.add(Laser(position: position.clone() + Vector2(0, -size.y / 2), spriteName: 'laser.png', damage: 1));
-    } else {
-        switch (skill) {
-            case 'skill_samxet':
-                game.add(Laser(position: position.clone() + Vector2(0, -size.y / 2), spriteName: 'skill_samxet.png', damage: 2));
-                break;
-            case 'skill_hinhtron':
-                game.add(HinhtronProjectile(position: position.clone() + Vector2(0, -size.y / 2)));
-                break;
-            case 'skill_cauvong':
-                for (var i = -1; i <= 1; i++) {
-                    game.add(Laser(
-                        position: position.clone() + Vector2(0, -size.y / 2),
-                        angle: i * 15 * degrees2Radians,
-                        spriteName: 'skill_cauvong.png',
-                        damage: 1,
-                    ));
-                }
-                break;
-            default:
-                game.add(Laser(position: position.clone() + Vector2(0, -size.y / 2), spriteName: 'laser.png', damage: 1));
+    switch (skill) {
+      case 'skill_samxet':
+        game.add(Laser(position: spawnPos, spriteName: 'skill_samxet.png', damage: 2));
+        if (isLaserActive) {
+          game.add(Laser(position: spawnPos, spriteName: 'skill_samxet.png', damage: 2, angle: 15 * degrees2Radians));
+          game.add(Laser(position: spawnPos, spriteName: 'skill_samxet.png', damage: 2, angle: -15 * degrees2Radians));
         }
-    }
-
-    if (_laserPowerupTimer.isRunning()) {
-      game.add(Laser(position: position.clone() + Vector2(0, -size.y / 2), angle: 15 * degrees2Radians));
-      game.add(Laser(position: position.clone() + Vector2(0, -size.y / 2), angle: -15 * degrees2Radians));
+        break;
+      case 'skill_hinhtron':
+        game.add(HinhtronProjectile(position: spawnPos));
+        if (isLaserActive) {
+          game.add(HinhtronProjectile(position: spawnPos, angle: 15 * degrees2Radians));
+          game.add(HinhtronProjectile(position: spawnPos, angle: -15 * degrees2Radians));
+        }
+        break;
+      case 'skill_cauvong':
+        for (var i = -1; i <= 1; i++) {
+          game.add(Laser(
+            position: spawnPos,
+            angle: i * 15 * degrees2Radians,
+            spriteName: 'skill_cauvong.png',
+            damage: 1,
+          ));
+        }
+        if (isLaserActive) {
+          game.add(Laser(position: spawnPos, angle: 30 * degrees2Radians, spriteName: 'skill_cauvong.png', damage: 1));
+          game.add(Laser(position: spawnPos, angle: -30 * degrees2Radians, spriteName: 'skill_cauvong.png', damage: 1));
+        }
+        break;
+      default:
+        game.add(Laser(position: spawnPos, spriteName: 'laser.png', damage: 1));
+        if (isLaserActive) {
+          game.add(Laser(position: spawnPos, spriteName: 'laser.png', damage: 1, angle: 15 * degrees2Radians));
+          game.add(Laser(position: spawnPos, spriteName: 'laser.png', damage: 1, angle: -15 * degrees2Radians));
+        }
+        break;
     }
   }
 
@@ -213,9 +228,17 @@ class Player extends SpriteAnimationComponent
   @override
   void onCollision(Set<Vector2> intersectionPoints, PositionComponent other) {
     super.onCollision(intersectionPoints, other);
-    if (_isDestroyed || isTransitioning) return;
+    if (_isDestroyed || isTransitioning) {
+      if (kDebugMode) {
+        print('Collision ignored: _isDestroyed=$_isDestroyed, isTransitioning=$isTransitioning');
+      }
+      return;
+    }
 
     if (other is Asteroid || other is Monster || other is MonsterLaser || other is RedLaser || other is BossMonster) {
+      if (kDebugMode) {
+        print('Collision with ${other.runtimeType}');
+      }
       if (_isInvincible || hasShield) return;
 
       lives--;
@@ -272,7 +295,7 @@ class HinhtronProjectile extends SpriteComponent
   final double _speed = 600;
   final int damage = 3;
 
-  HinhtronProjectile({required super.position})
+  HinhtronProjectile({required super.position, super.angle})
       : super(
           size: Vector2.all(30),
           anchor: Anchor.center,
@@ -287,9 +310,10 @@ class HinhtronProjectile extends SpriteComponent
   @override
   void update(double dt) {
     super.update(dt);
-    position.y -= _speed * dt;
+    position.y += sin(angle - pi / 2) * _speed * dt;
+    position.x += cos(angle - pi / 2) * _speed * dt;
 
-    if (position.y < -size.y) {
+    if (position.y < -size.y || position.x < -size.x || position.x > game.size.x + size.x) {
       removeFromParent();
     }
   }
