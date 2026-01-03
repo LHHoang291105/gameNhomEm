@@ -20,9 +20,11 @@ class _GameOverOverlayState extends State<GameOverOverlay> {
     Future.delayed(
       const Duration(milliseconds: 0),
       () {
-        setState(() {
-          _opacity = 1.0;
-        });
+        if (mounted) {
+          setState(() {
+            _opacity = 1.0;
+          });
+        }
       },
     );
   }
@@ -82,53 +84,64 @@ class _GameOverOverlayState extends State<GameOverOverlay> {
               ],
             ),
             const SizedBox(height: 30),
-            TextButton(
-              onPressed: () {
-                widget.game.audioManager.playSound('click');
-                widget.game.restartGame();
-                setState(() {
-                  _opacity = 0.0;
-                });
+            ValueListenableBuilder<bool>(
+              valueListenable: widget.game.isSavingScore,
+              builder: (context, isSaving, child) {
+                if (isSaving) {
+                  return const CircularProgressIndicator();
+                }
+                return child!;
               },
-              style: TextButton.styleFrom(
-                padding:
-                    const EdgeInsets.symmetric(vertical: 10, horizontal: 25),
-                backgroundColor: Colors.blue,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(50),
-                ),
-              ),
-              child: const Text(
-                'PLAY AGAIN',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 28,
-                ),
-              ),
-            ),
-            const SizedBox(height: 15),
-            TextButton(
-              onPressed: () {
-                widget.game.audioManager.playSound('click');
-                widget.game.quitGame();
-                setState(() {
-                  _opacity = 0.0;
-                });
-              },
-              style: TextButton.styleFrom(
-                padding:
-                    const EdgeInsets.symmetric(vertical: 10, horizontal: 25),
-                backgroundColor: Colors.blue,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(50),
-                ),
-              ),
-              child: const Text(
-                'QUIT GAME',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 28,
-                ),
+              child: Column(
+                children: [
+                  TextButton(
+                    onPressed: () {
+                      widget.game.audioManager.playSound('click');
+                      widget.game.restartGame();
+                      setState(() {
+                        _opacity = 0.0;
+                      });
+                    },
+                    style: TextButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 25),
+                      backgroundColor: Colors.blue,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(50),
+                      ),
+                    ),
+                    child: const Text(
+                      'PLAY AGAIN',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 28,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 15),
+                  TextButton(
+                    onPressed: () {
+                      widget.game.audioManager.playSound('click');
+                      widget.game.quitGame();
+                      setState(() {
+                        _opacity = 0.0;
+                      });
+                    },
+                    style: TextButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 25),
+                      backgroundColor: Colors.blue,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(50),
+                      ),
+                    ),
+                    child: const Text(
+                      'QUIT GAME',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 28,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
           ],

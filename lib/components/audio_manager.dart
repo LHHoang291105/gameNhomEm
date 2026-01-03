@@ -7,6 +7,8 @@ class AudioManager extends Component {
   bool musicEnabled = true;
   bool soundsEnabled = true;
 
+  final Map<String, AudioPool> _pools = {};
+
   final List<String> _sounds = [
     'click',
     'collect',
@@ -23,7 +25,17 @@ class AudioManager extends Component {
     FlameAudio.bgm.initialize();
 
     // Preload sound effects
-    await FlameAudio.audioCache.loadAll(_sounds.map((s) => '$s.ogg').toList());
+    final soundFiles = _sounds.map((s) => '$s.ogg').toList();
+    await FlameAudio.audioCache.loadAll(soundFiles);
+
+    // Initialize AudioPools for high-frequency sounds
+    for (final sound in ['laser', 'explode1', 'explode2', 'hit']) {
+      _pools[sound] = await FlameAudio.createPool(
+        '$sound.ogg',
+        minPlayers: 1,
+        maxPlayers: 4,
+      );
+    }
 
     return super.onLoad();
   }
@@ -36,7 +48,17 @@ class AudioManager extends Component {
 
   void playSound(String sound) {
     if (soundsEnabled) {
-      FlameAudio.play('$sound.ogg');
+      try {
+        if (_pools.containsKey(sound)) {
+          _pools[sound]!.start();
+        } else {
+          FlameAudio.play('$sound.ogg').catchError((e) {
+             print("Audio Error ($sound): $e");
+          });
+        }
+      } catch (e) {
+        print("Audio Play Failed: $e");
+      }
     }
   }
 

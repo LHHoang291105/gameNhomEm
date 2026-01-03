@@ -31,6 +31,8 @@ class MyGame extends FlameGame
   late JoystickComponent joystick;
   final Random _random = Random();
   ShootButton? _shootButton;
+  
+  bool _joystickInitialized = false; // Flag to track joystick init
 
   String currentSkin = 'vang';
   String currentSkill = '';
@@ -76,6 +78,7 @@ class MyGame extends FlameGame
   int _score = 0;
   int _totalCoins = 0;
   int _sessionCoins = 0;
+  int _bestScore = 0;
 
   String? _nickname;
   String? get nickname => _nickname;
@@ -102,55 +105,10 @@ class MyGame extends FlameGame
       'joystick_background.png',
       'shield_pickup.png',
       'laser_pickup.png',
-      'bomb_pickup.png',
-      'heart_pickup.png',
-      'laser.png',
-      'tiatim.png',
-      'tiaxanh.png',
-      'asteroid1.png',
-      'asteroid2.png',
-      'asteroid3.png',
-      'monster_saothuy1.png',
-      'monster_saothuy1.1.png',
-      'monster_saothuy3.png',
-      'monster_saothuy3.1.png',
-      'monster_saothuy3.2.png',
-      'monster_mini_sao_hoa_1.png',
-      'monster_mini_sao_hoa_1.1.png',
-      'monster_mini_sao_hoa_1.2.png',
-      'monster_mini_sao_hoa_2.png',
-      'monster_mini_sao_hoa_2.1.png',
-      'sao_thuy.png',
-      'sao_hoa.png',
+      'coin.png',
       'title.png',
       'start_button.png',
       'arrow_button.png',
-      'vang.png',
-      'vang1.png',
-      'vang2.png',
-      'vang3.png',
-      'maybay.png',
-      'maybay1.png',
-      'maybay2.png',
-      'player_red_off.png',
-      'player_red_on0.png',
-      'player_red_on1.png',
-      'player_blue_off.png',
-      'player_blue_on0.png',
-      'player_blue_on1.png',
-      'chienco_hong.png',
-      'chienco_hong1.png',
-      'chienco_hong2.png',
-      'chienco_xanh.png',
-      'chienco_xanh1.png',
-      'chienco_xanh2.png',
-      'skill_samxet.png',
-      'skill_hinhtron.png',
-      'skill_cauvong.png',
-      'coin.png',
-      'coin1.png',
-      'coin2.png',
-      'coin3.png',
     ]);
 
     _joystickKnobSprite = Sprite(images.fromCache('joystick_knob.png'));
@@ -204,6 +162,8 @@ class MyGame extends FlameGame
       currentSkin = playerData['currentSkin'] ?? 'vang';
       currentSkill = playerData['currentSkill'] ?? '';
       skinsOwned = (playerData['skinsOwned'] as Map<String, dynamic>).keys.toList();
+
+      _bestScore = (playerData['bestScore'] ?? 0) as int;
       nicknameNotifier.value = _nickname;
     }
   }
@@ -377,14 +337,23 @@ class MyGame extends FlameGame
     _isGameEnded = true;
 
     if (player.isDestroyed) return;
-    pauseEngine();
+    // pauseEngine(); // Bỏ pauseEngine để tránh crash
+    _cleanUpGameWorld(); // Dọn dẹp bộ nhớ ngay lập tức
     overlays.add('Victory');
 
     if (isOnline) {
       isSavingScore.value = true;
+      
+      int? newBest;
+      if (_score > _bestScore) {
+        _bestScore = _score;
+        newBest = _score;
+      }
+
       _firebaseService.onGameEnd(
         score: _score,
         coinsEarned: _sessionCoins,
+        newBestScore: newBest,
       ).whenComplete(() {
         isSavingScore.value = false;
       });
@@ -465,7 +434,11 @@ class MyGame extends FlameGame
   }
 
   void _removeAllUI() {
-    joystick.removeFromParent();
+    // joystick.removeFromParent(); // Fix crash: Don't remove joystick while dragging
+    joystick.priority = -10000;
+    // Move off-screen to hide and disable interaction
+    joystick.position = Vector2(-10000, -10000); 
+    
     _shootButton?.removeFromParent();
     _shootButton = null;
     _scoreDisplay?.removeFromParent();
@@ -490,6 +463,40 @@ class MyGame extends FlameGame
     _laserIcon = null;
     _menuBtn?.removeFromParent();
     _menuBtn = null;
+  }
+
+  void _cleanUpGameWorld() {
+    // 1. Dừng và xóa các Spawner
+    _stopAllSpawners();
+    _removeSpawners();
+
+    // 2. Xóa UI
+    _removeAllUI();
+
+    // 3. Xóa Background
+    _background?.removeFromParent();
+    _background = null;
+
+    // 4. Xóa tất cả các thực thể trong game (Quái, đạn, hiệu ứng, item...)
+    children.where((c) =>
+      c is Asteroid ||
+      c is Monster ||
+      c is BossMonster ||
+      c is Bubble ||
+      c is RedDust ||
+      c is Pickup ||
+      c is MonsterLaser ||
+      c is Laser ||
+      c is RedLaser ||
+      c is Explosion ||
+      c is Coin ||
+      c is BombExplosion ||
+      c is Star || // Xóa cả sao nền
+      (c is RectangleComponent && c.priority == 100) // Xóa các hiệu ứng cảnh báo đỏ
+    ).forEach((c) => c.removeFromParent());
+
+    // 5. Nếu player chưa bị destroy thì cũng nên ẩn hoặc xóa đi (tuỳ logic, ở đây giữ lại playerState nếu cần nhưng thường game over thì player đã nổ hoặc ẩn)
+    // Tuy nhiên hàm playerDied đã xử lý player nổ rồi.
   }
 
   void _stopAllSpawners() {
@@ -573,6 +580,13 @@ class MyGame extends FlameGame
   }
 
   void _createJoystick() {
+    if (_joystickInitialized && joystick.isMounted) {
+      joystick.priority = 100;
+      // Reset position to visible area
+      joystick.position = Vector2(20, size.y - 20); 
+      return;
+    }
+
     joystick = JoystickComponent(
       knob: SpriteComponent(sprite: _joystickKnobSprite, size: Vector2.all(50)),
       background: SpriteComponent(
@@ -582,6 +596,7 @@ class MyGame extends FlameGame
       priority: 100,
     );
     add(joystick);
+    _joystickInitialized = true;
   }
 
   void _createShootButton() {
@@ -642,18 +657,18 @@ class MyGame extends FlameGame
   }
 
   void _createSaoThuyBackground() async {
-    _background = SpriteComponent(
-        sprite: Sprite(images.fromCache('sao_thuy.png')),
-        size: size,
-        priority: -100);
+    _background = SpriteComponent()
+      ..sprite = await loadSprite('sao_thuy.png')
+      ..size = size
+      ..priority = -100;
     add(_background!);
   }
 
   void _createSaoHoaBackground() async {
-    _background = SpriteComponent(
-        sprite: Sprite(images.fromCache('sao_hoa.png')),
-        size: size,
-        priority: -100);
+    _background = SpriteComponent()
+      ..sprite = await loadSprite('sao_hoa.png')
+      ..size = size
+      ..priority = -100;
     add(_background!);
   }
 
@@ -840,20 +855,28 @@ class MyGame extends FlameGame
     if (_isGameEnded) return;
     _isGameEnded = true;
 
-    pauseEngine();
+    // pauseEngine(); // Bỏ pauseEngine để tránh crash
+    _cleanUpGameWorld(); // Dọn dẹp bộ nhớ ngay lập tức
     overlays.add('GameOver');
 
     if (isOnline) {
       isSavingScore.value = true;
+      
+      int? newBest;
+      if (_score > _bestScore) {
+        _bestScore = _score;
+        newBest = _score;
+      }
+
       _firebaseService.onGameEnd(
         score: _score,
         coinsEarned: _sessionCoins,
+        newBestScore: newBest,
       ).whenComplete(() {
         isSavingScore.value = false;
       });
     }
   }
-
 
   void restartGame() {
     if (isOnline) {
@@ -865,7 +888,7 @@ class MyGame extends FlameGame
       _sessionCoins = 0;
       _bossSpawned = false;
 
-      children.where((c) => c is! CameraComponent && c is! AudioManager).forEach((c) => c.removeFromParent());
+      children.where((c) => c is! CameraComponent && c is! AudioManager && c is! JoystickComponent).forEach((c) => c.removeFromParent());
       _createStars();
       startGame();
       resumeEngine();
@@ -878,7 +901,7 @@ class MyGame extends FlameGame
       _sessionCoins = 0;
       _bossSpawned = false;
 
-      children.where((c) => c is! CameraComponent && c is! AudioManager).forEach((c) => c.removeFromParent());
+      children.where((c) => c is! CameraComponent && c is! AudioManager && c is! JoystickComponent).forEach((c) => c.removeFromParent());
       _createStars();
       startOffline(); // Re-initialize offline settings
       startGame();
@@ -892,11 +915,18 @@ class MyGame extends FlameGame
     }
     children
         .where((c) =>
-            c is! CameraComponent && c is! AudioManager && c is! Star)
+            c is! CameraComponent && c is! AudioManager && c is! Star && c is! JoystickComponent)
         .forEach((c) => c.removeFromParent());
     if (children.whereType<Star>().isEmpty) _createStars();
     showMainMenu();
     resumeEngine();
+  }
+
+  Future<String> redeemGiftCode(String code) async {
+    if (!isOnline) {
+      return "Tính năng này chỉ dành cho chế độ online.";
+    }
+    return await _firebaseService.redeemGiftCode(code);
   }
 }
 

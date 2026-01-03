@@ -107,25 +107,37 @@ class _VictoryOverlayState extends State<VictoryOverlay> with SingleTickerProvid
                   ],
                 ),
                 const SizedBox(height: 80),
-                
-                _MenuButton(
-                  text: 'CHƠI LẠI',
-                  color: Colors.greenAccent,
-                  onPressed: () {
-                    widget.game.audioManager.playSound('click');
-                    widget.game.overlays.remove('Victory');
-                    widget.game.restartGame();
+                ValueListenableBuilder<bool>(
+                  valueListenable: widget.game.isSavingScore,
+                  builder: (context, isSaving, child) {
+                    if (isSaving) {
+                      return const CircularProgressIndicator();
+                    }
+                    return child!;
                   },
-                ),
-                const SizedBox(height: 20),
-                _MenuButton(
-                  text: 'THOÁT',
-                  color: Colors.redAccent,
-                  onPressed: () {
-                    widget.game.audioManager.playSound('click');
-                    widget.game.overlays.remove('Victory');
-                    widget.game.quitGame();
-                  },
+                  child: Column(
+                    children: [
+                      _MenuButton(
+                        text: 'CHƠI LẠI',
+                        color: Colors.greenAccent,
+                        onPressed: () {
+                          widget.game.audioManager.playSound('click');
+                          widget.game.overlays.remove('Victory');
+                          widget.game.restartGame();
+                        },
+                      ),
+                      const SizedBox(height: 20),
+                      _MenuButton(
+                        text: 'THOÁT',
+                        color: Colors.redAccent,
+                        onPressed: () {
+                          widget.game.audioManager.playSound('click');
+                          widget.game.overlays.remove('Victory');
+                          widget.game.quitGame();
+                        },
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),

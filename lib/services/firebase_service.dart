@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 
 class FirebaseService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -58,7 +59,7 @@ class FirebaseService {
       debugPrint("Tạo tài liệu mới cho người dùng: \${user.uid}");
       await ref.set({
         'email': user.email,
-        'nickname': '',
+        'nickname': user.displayName ?? '',
         'coins': 0,
         'bestScore': 0,
         'lastScore': 0,
@@ -66,6 +67,7 @@ class FirebaseService {
         'currentSkin': 'vang',
         'skillsOwned': {},
         'currentSkill': '',
+        'redeemedCodes': [],
         'createdAt': FieldValue.serverTimestamp(),
         'lastLoginAt': FieldValue.serverTimestamp(),
       });
@@ -106,28 +108,24 @@ class FirebaseService {
   Future<void> onGameEnd({
     required int score,
     required int coinsEarned,
+    int? newBestScore,
   }) async {
     if (currentUser == null) return;
 
     final playerDocRef = _playerRef(currentUser!.uid);
 
     try {
-      await _firestore.runTransaction((transaction) async {
-        final snapshot = await transaction.get(playerDocRef);
-        final data = snapshot.data();
-
-        var updates = <String, dynamic>{
-          'coins': FieldValue.increment(coinsEarned),
-          'lastScore': score,
-        };
-
-        final bestScore = data?['bestScore'] ?? 0;
-        if (score > bestScore) {
-          updates['bestScore'] = score;
-        }
-        
-        transaction.update(playerDocRef, updates);
-      });
+      final updates = <String, dynamic>{
+        'coins': FieldValue.increment(coinsEarned),
+        'lastScore': score,
+        'lastLoginAt': FieldValue.serverTimestamp(),
+      };
+      
+      if (newBestScore != null) {
+        updates['bestScore'] = newBestScore;
+      }
+      
+      await playerDocRef.update(updates);
     } catch (e) {
       debugPrint("Lỗi khi xử lý cuối game: \$e");
     }
@@ -155,7 +153,7 @@ class FirebaseService {
         
         transaction.update(playerDocRef, {
           'coins': FieldValue.increment(-price),
-          '$itemField.$itemId': true,
+          '${itemField}.${itemId}': true,
         });
       });
       return true;
@@ -177,5 +175,48 @@ class FirebaseService {
       debugPrint("Lỗi khi trang bị vật phẩm: \$e");
       return false;
     }
+  }
+
+  Future<String> redeemGiftCode(String code) async {
+    if (currentUser == null) return "Bạn cần đăng nhập để thực hiện.";
+
+    final codeRef = _firestore.collection('giftCodes').doc(code);
+    final playerRef = _playerRef(currentUser!.uid);
+
+    try {
+      return await _firestore.runTransaction((transaction) async {
+        final codeDoc = await transaction.get(codeRef);
+        final playerDoc = await transaction.get(playerRef);
+
+        if (!codeDoc.exists) {
+          return "Mã không hợp lệ!";
+        }
+
+        final playerData = playerDoc.data()!;
+        final List<dynamic> redeemedCodes = playerData['redeemedCodes'] ?? [];
+        if (redeemedCodes.contains(code)) {
+          return "Bạn đã sử dụng mã này rồi.";
+        }
+
+        final codeData = codeDoc.data()!;
+        final int reward = codeData['reward'] as int;
+
+        transaction.update(playerRef, {
+          'coins': FieldValue.increment(reward),
+          'redeemedCodes': FieldValue.arrayUnion([code])
+        });
+
+        return "Chúc mừng! Bạn nhận được $reward xu.";
+      });
+    } catch (e) {
+      debugPrint("Lỗi khi đổi mã: $e");
+      return "Đã có lỗi xảy ra. Vui lòng thử lại.";
+    }
+  }
+
+  void showMessage(BuildContext context, String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
   }
 }

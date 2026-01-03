@@ -165,8 +165,8 @@ class Player extends SpriteAnimationComponent
       case 'skill_hinhtron':
         game.add(HinhtronProjectile(position: spawnPos));
         if (isLaserActive) {
-          game.add(HinhtronProjectile(position: spawnPos, angle: 15 * degrees2Radians));
-          game.add(HinhtronProjectile(position: spawnPos, angle: -15 * degrees2Radians));
+          game.add(HinhtronProjectile(position: spawnPos + Vector2(-20, 0)));
+          game.add(HinhtronProjectile(position: spawnPos + Vector2(20, 0)));
         }
         break;
       case 'skill_cauvong':
@@ -323,7 +323,7 @@ class HinhtronProjectile extends SpriteComponent
       Set<Vector2> intersectionPoints, PositionComponent other) {
     super.onCollisionStart(intersectionPoints, other);
 
-    if (other is Player || other is Pickup || other is Coin) {
+    if (other is Player || other is Pickup || other is Coin || other is Shield) {
       return;
     }
 

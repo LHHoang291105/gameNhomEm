@@ -1,4 +1,4 @@
-import 'dart:async';
+import 'dart:async' hide Timer;
 import 'dart:math';
 
 import 'package:Phoenix_Blast/components/coin.dart';
@@ -13,13 +13,13 @@ import 'package:flutter/material.dart';
 
 class BossMonster extends SpriteAnimationComponent with HasGameReference<MyGame>, CollisionCallbacks {
   late Timer _fireTimer;
-  late Timer _enragedCycleTimer;
+  // late Timer _enragedCycleTimer; // Removed
   
   int health = 100;
-  int _hitCount = 0;
+  int _hitCount = 0; // Restored
   bool _isMovingToCenter = true;
-  bool _isEnraged = false;
-  bool _isTransitioning = false; // Trạng thái 20 HP
+  // bool _isEnraged = false; // Removed
+  bool _isTransitioning = false; // Trạng thái 20 HP (Removed/Unused in new logic)
   bool _isMidPhaseTransitioning = false; // Trạng thái 50 HP
   bool _hasTriggeredMidPhase = false;
   bool _canShoot = true;
@@ -60,7 +60,7 @@ class BossMonster extends SpriteAnimationComponent with HasGameReference<MyGame>
     ));
 
     _fireTimer = Timer(0.8, onTick: _decideFireLogic, repeat: true, autoStart: false);
-    _enragedCycleTimer = Timer(10.0, onTick: _performEnragedSequence, repeat: true, autoStart: false);
+    // _enragedCycleTimer removed
     
     return super.onLoad();
   }
@@ -85,31 +85,30 @@ class BossMonster extends SpriteAnimationComponent with HasGameReference<MyGame>
   @override
   void update(double dt) {
     super.update(dt);
-    if (!_isMovingToCenter && !_isTransitioning && !_isMidPhaseTransitioning) {
-      if (!_isEnraged) {
+    if (!_isMovingToCenter && !_isMidPhaseTransitioning) {
         _fireTimer.update(dt);
         // Tăng biên độ di chuyển ngang của Boss lên 130 để bao phủ rộng hơn
         position.x = game.size.x / 2 + sin(game.currentTime() * 1.5) * 130;
-      } else {
-        _enragedCycleTimer.update(dt);
-        if (_enragedCycleTimer.current >= 5.0 && _canShoot) {
-           _fireTimer.update(dt);
-        }
-      }
     }
   }
 
   void _decideFireLogic() {
-    if (!isMounted || _isTransitioning || _isMidPhaseTransitioning) return;
+    if (!isMounted || _isMidPhaseTransitioning) return;
     
     Vector2 direction;
     double speed;
     if (health > 50) {
+      // Phase 1: Bắn thẳng
       direction = Vector2(0, 1);
       speed = 350;
-    } else {
+    } else if (health > 20) {
+      // Phase 2: Bắn đuổi chậm
       direction = (game.player.position - position).normalized();
-      speed = 120; // Tốc độ cực chậm cho giai đoạn 50-21 máu
+      speed = 120; 
+    } else {
+      // Phase 3 (Mới): Bắn đuổi RẤT NHANH
+      direction = (game.player.position - position).normalized();
+      speed = 400;
     }
     
     game.add(RedLaser(position: position.clone()..y += 160, direction: direction, speed: speed));
@@ -139,10 +138,10 @@ class BossMonster extends SpriteAnimationComponent with HasGameReference<MyGame>
         
         Future.delayed(const Duration(seconds: 5), () {
           if (!isMounted) return;
-          _isTransitioning = false;
-          _isEnraged = true;
+          // _isTransitioning = false; // Removed
+          // _isEnraged = true; // Removed
           _fireTimer.limit = 0.6;
-          _enragedCycleTimer.start();
+          // _enragedCycleTimer.start(); // Removed
           add(MoveToEffect(_originalPosition, EffectController(duration: 1.0)));
         });
       }
@@ -159,25 +158,7 @@ class BossMonster extends SpriteAnimationComponent with HasGameReference<MyGame>
     alarm.add(OpacityEffect.to(0.0, EffectController(duration: 0.5, reverseDuration: 0.5, repeatCount: 5), onComplete: () => alarm.removeFromParent()));
   }
 
-  void _performEnragedSequence() {
-    if (!isMounted || _isTransitioning || _isMidPhaseTransitioning) return;
-    _canShoot = false;
-    final targetPos = game.player.position.clone();
-    add(MoveToEffect(
-      targetPos,
-      EffectController(duration: 1.5, curve: Curves.easeInOut),
-      onComplete: () {
-        Future.delayed(const Duration(seconds: 2), () {
-          if (!isMounted) return;
-          add(MoveToEffect(
-            _originalPosition,
-            EffectController(duration: 1.5, curve: Curves.easeInOut),
-            onComplete: () { _canShoot = true; }
-          ));
-        });
-      }
-    ));
-  }
+  // void _performEnragedSequence() {} // Removed
 
   void takeDamage({int amount = 1}) {
     if (_isTransitioning || _isMidPhaseTransitioning) return;
@@ -197,9 +178,11 @@ class BossMonster extends SpriteAnimationComponent with HasGameReference<MyGame>
     
     if (health <= 50 && !_hasTriggeredMidPhase) {
       _startMidPhaseTransition();
-    } else if (health <= 20 && !_isEnraged && !_isTransitioning) {
-      _startEnragedTransition();
-    }
+    } 
+    // Logic Enraged cũ đã bị xóa
+    // else if (health <= 20 && !_isEnraged && !_isTransitioning) {
+    //   _startEnragedTransition(); 
+    // }
 
     if (health <= 0) {
       game.bossDefeated();

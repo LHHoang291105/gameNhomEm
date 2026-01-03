@@ -10,6 +10,7 @@ import 'package:Phoenix_Blast/overlays/pause_menu.dart';
 import 'package:Phoenix_Blast/overlays/countdown_overlay.dart';
 import 'package:Phoenix_Blast/overlays/instructions_overlay.dart';
 import 'package:Phoenix_Blast/overlays/victory_overlay.dart';
+import 'package:Phoenix_Blast/overlays/gift_code_overlay.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flame/game.dart';
 import 'package:flutter/material.dart';
@@ -44,6 +45,7 @@ void main() async {
             'Nickname': (context, MyGame game) => NicknameOverlay(game: game),
             'Leaderboard': (context, MyGame game) => LeaderboardOverlay(game: game),
             'Shop': (context, MyGame game) => ShopOverlay(game: game),
+            'GiftCode': (context, MyGame game) => GiftCodeOverlay(game: game),
           },
         ),
       ),
