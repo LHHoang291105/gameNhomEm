@@ -1,6 +1,8 @@
 import 'package:Phoenix_Blast/my_game.dart';
 import 'package:flutter/material.dart';
 
+enum GameOverAction { none, restart, quit }
+
 class GameOverOverlay extends StatefulWidget {
   final MyGame game;
 
@@ -12,6 +14,7 @@ class GameOverOverlay extends StatefulWidget {
 
 class _GameOverOverlayState extends State<GameOverOverlay> {
   double _opacity = 0.0;
+  GameOverAction _action = GameOverAction.none;
 
   @override
   void initState() {
@@ -35,6 +38,11 @@ class _GameOverOverlayState extends State<GameOverOverlay> {
       onEnd: () {
         if (_opacity == 0.0) {
           widget.game.overlays.remove('GameOver');
+          if (_action == GameOverAction.restart) {
+            widget.game.restartGame();
+          } else if (_action == GameOverAction.quit) {
+            widget.game.quitGame();
+          }
         }
       },
       opacity: _opacity,
@@ -97,8 +105,8 @@ class _GameOverOverlayState extends State<GameOverOverlay> {
                   TextButton(
                     onPressed: () {
                       widget.game.audioManager.playSound('click');
-                      widget.game.restartGame();
                       setState(() {
+                        _action = GameOverAction.restart;
                         _opacity = 0.0;
                       });
                     },
@@ -121,8 +129,8 @@ class _GameOverOverlayState extends State<GameOverOverlay> {
                   TextButton(
                     onPressed: () {
                       widget.game.audioManager.playSound('click');
-                      widget.game.quitGame();
                       setState(() {
+                        _action = GameOverAction.quit;
                         _opacity = 0.0;
                       });
                     },

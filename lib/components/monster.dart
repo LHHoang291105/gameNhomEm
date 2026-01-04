@@ -148,9 +148,8 @@ class Monster extends SpriteAnimationComponent with HasGameReference<MyGame> {
       ));
       game.incrementScore(10);
       _maybeDropPickup();
-      _dropCoins(3);
-    } else {
       _dropCoins(1);
+    } else {
       add(ColorEffect(
         const Color(0xFFFF0000),
         EffectController(duration: 0.1, reverseDuration: 0.1),

@@ -51,8 +51,8 @@ class Player extends SpriteAnimationComponent
       this.lives = lives;
     }
     _explosionTimer = Timer(0.15, onTick: _createRandomExplosion, repeat: true, autoStart: false);
-    _laserPowerupTimer = Timer(4.0, onTick: () {}, autoStart: false);
-    _shieldPowerupTimer = Timer(4.0, onTick: _deactivateShield, autoStart: false);
+    _laserPowerupTimer = Timer(5.0, onTick: () {}, autoStart: false);
+    _shieldPowerupTimer = Timer(5.0, onTick: _deactivateShield, autoStart: false);
     _invincibilityTimer = Timer(1.5, onTick: () => _isInvincible = false, autoStart: false);
   }
 
@@ -163,10 +163,10 @@ class Player extends SpriteAnimationComponent
         }
         break;
       case 'skill_hinhtron':
-        game.add(HinhtronProjectile(position: spawnPos));
+        game.add(HinhtronProjectile(position: spawnPos, angle: 0));
         if (isLaserActive) {
-          game.add(HinhtronProjectile(position: spawnPos + Vector2(-20, 0)));
-          game.add(HinhtronProjectile(position: spawnPos + Vector2(20, 0)));
+          game.add(HinhtronProjectile(position: spawnPos, angle: -15 * degrees2Radians));
+          game.add(HinhtronProjectile(position: spawnPos, angle: 15 * degrees2Radians));
         }
         break;
       case 'skill_cauvong':
@@ -297,7 +297,7 @@ class HinhtronProjectile extends SpriteComponent
 
   HinhtronProjectile({required super.position, super.angle})
       : super(
-          size: Vector2.all(30),
+          size: Vector2.all(20),
           anchor: Anchor.center,
         );
 
@@ -323,7 +323,7 @@ class HinhtronProjectile extends SpriteComponent
       Set<Vector2> intersectionPoints, PositionComponent other) {
     super.onCollisionStart(intersectionPoints, other);
 
-    if (other is Player || other is Pickup || other is Coin || other is Shield) {
+    if (other is Player || other is Pickup || other is Coin || other is Shield || other is HinhtronProjectile) {
       return;
     }
 

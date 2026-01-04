@@ -60,11 +60,4 @@ class Coin extends SpriteAnimationComponent
     super.onCollisionStart(intersectionPoints, other);
   }
 
-  @override
-  void onRemove() {
-    if (isVictoryCoin) {
-      game.decrementVictoryCoinCount();
-    }
-    super.onRemove();
-  }
 }

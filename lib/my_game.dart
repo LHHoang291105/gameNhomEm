@@ -54,8 +54,6 @@ class MyGame extends FlameGame
   bool _levelTransitioning = false;
   bool _bossSpawned = false;
   bool _isGameEnded = false;
-  bool _waitingForVictoryCoins = false;
-  int _victoryCoinCount = 0;
   SpriteComponent? _background;
 
   double _distanceTraveled = 0.0;
@@ -312,24 +310,7 @@ class MyGame extends FlameGame
   }
 
   void bossDefeated() {
-    _waitingForVictoryCoins = true;
-    _victoryCoinCount = 30;
-    for (int i = 0; i < 30; i++) {
-      final coin = Coin(
-        value: 1, 
-        position: Vector2(size.x / 2, size.y / 2),
-        isVictoryCoin: true,
-      );
-      add(coin);
-    }
-  }
-
-  void decrementVictoryCoinCount() {
-    _victoryCoinCount--;
-    if (_victoryCoinCount <= 0 && _waitingForVictoryCoins) {
-      _waitingForVictoryCoins = false;
-      victory();
-    }
+    victory();
   }
 
   void victory() {
@@ -337,8 +318,11 @@ class MyGame extends FlameGame
     _isGameEnded = true;
 
     if (player.isDestroyed) return;
-    // pauseEngine(); // Bỏ pauseEngine để tránh crash
-    _cleanUpGameWorld(); // Dọn dẹp bộ nhớ ngay lập tức
+    _cleanUpGameWorld();
+    if (_joystickInitialized) {
+      joystick.removeFromParent();
+      _joystickInitialized = false;
+    }
     overlays.add('Victory');
 
     if (isOnline) {
@@ -434,10 +418,10 @@ class MyGame extends FlameGame
   }
 
   void _removeAllUI() {
-    // joystick.removeFromParent(); // Fix crash: Don't remove joystick while dragging
-    joystick.priority = -10000;
-    // Move off-screen to hide and disable interaction
-    joystick.position = Vector2(-10000, -10000); 
+    if (_joystickInitialized) {
+      joystick.removeFromParent();
+      _joystickInitialized = false;
+    }
     
     _shootButton?.removeFromParent();
     _shootButton = null;
@@ -528,6 +512,7 @@ class MyGame extends FlameGame
     final currentLives = player.lives;
     player.removeFromParent(); 
     _createPlayer(lives: currentLives);
+    _createUI(); // Moved here
     player.position = Vector2(size.x / 2, size.y + player.size.y * 2);
     player.opacity = 0;
     player.addAll([
@@ -537,7 +522,6 @@ class MyGame extends FlameGame
           onComplete: () {
         _levelTransitioning = false;
         player.isTransitioning = false;
-        _createUI();
       }),
       OpacityEffect.fadeIn(
           EffectController(duration: 0.5, curve: Curves.easeIn))
@@ -842,9 +826,11 @@ class MyGame extends FlameGame
   void playerDied() {
     if (_isGameEnded) return;
     _isGameEnded = true;
-
-    // pauseEngine(); // Bỏ pauseEngine để tránh crash
-    _cleanUpGameWorld(); // Dọn dẹp bộ nhớ ngay lập tức
+    if (_joystickInitialized) {
+      joystick.removeFromParent();
+      _joystickInitialized = false;
+    }
+    _cleanUpGameWorld();
     overlays.add('GameOver');
 
     if (isOnline) {
@@ -867,35 +853,25 @@ class MyGame extends FlameGame
   }
 
   void restartGame() {
-    // Dọn dẹp toàn bộ game world (bao gồm Player cũ)
     _cleanUpGameWorld();
 
-    if (isOnline) {
-      // Reset online game
-      _levelTransitioning = false;
-      _distanceTraveled = 0.0;
-      currentLevel = 1;
-      _score = 0;
-      _sessionCoins = 0;
-      _bossSpawned = false;
-
-      _createStars();
-      startGame();
-      resumeEngine();
-    } else {
-      // Reset offline game
-      _levelTransitioning = false;
-      _distanceTraveled = 0.0;
-      currentLevel = 1;
-      _score = 0;
-      _sessionCoins = 0;
-      _bossSpawned = false;
-
-      _createStars();
-      startOffline(); // Re-initialize offline settings
-      startGame();
-      resumeEngine();
+    // Remove joystick completely to ensure a fresh start, similar to quitGame.
+    if (_joystickInitialized) {
+      joystick.removeFromParent();
+      _joystickInitialized = false;
     }
+
+    // Reset game state
+    _levelTransitioning = false;
+    _distanceTraveled = 0.0;
+    currentLevel = 1;
+    _score = 0;
+    _sessionCoins = 0;
+    _bossSpawned = false;
+
+    _createStars();
+    startGame();
+    resumeEngine();
   }
 
   void quitGame() {

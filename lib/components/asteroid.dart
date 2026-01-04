@@ -97,12 +97,11 @@ class Asteroid extends SpriteComponent with HasGameReference<MyGame> {
       _createExplosion();
       _maybeSpawnSmallerAsteroids();
       _maybeDropPickup();
-      _dropCoins(3);
+      _dropCoins(1);
     } else {
       game.incrementScore(1);
       _flashWhite();
       _applyKnockback();
-      _dropCoins(1);
     }
   }
 

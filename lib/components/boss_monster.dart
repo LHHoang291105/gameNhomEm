@@ -13,14 +13,13 @@ import 'package:flutter/material.dart';
 
 class BossMonster extends SpriteAnimationComponent with HasGameReference<MyGame>, CollisionCallbacks {
   late Timer _fireTimer;
-  // late Timer _enragedCycleTimer; // Removed
   
   int health = 100;
-  int _hitCount = 0; // Restored
+  int _hitCount = 0;
+  int _hitsForCoin = 0; // Added for coin drop
   bool _isMovingToCenter = true;
-  // bool _isEnraged = false; // Removed
-  bool _isTransitioning = false; // Trạng thái 20 HP (Removed/Unused in new logic)
-  bool _isMidPhaseTransitioning = false; // Trạng thái 50 HP
+  bool _isTransitioning = false; 
+  bool _isMidPhaseTransitioning = false;
   bool _hasTriggeredMidPhase = false;
   bool _canShoot = true;
   
@@ -60,7 +59,6 @@ class BossMonster extends SpriteAnimationComponent with HasGameReference<MyGame>
     ));
 
     _fireTimer = Timer(0.8, onTick: _decideFireLogic, repeat: true, autoStart: false);
-    // _enragedCycleTimer removed
     
     return super.onLoad();
   }
@@ -87,8 +85,7 @@ class BossMonster extends SpriteAnimationComponent with HasGameReference<MyGame>
     super.update(dt);
     if (!_isMovingToCenter && !_isMidPhaseTransitioning) {
         _fireTimer.update(dt);
-        // Tăng biên độ di chuyển ngang của Boss lên 130 để bao phủ rộng hơn
-        position.x = game.size.x / 2 + sin(game.currentTime() * 1.5) * 130;
+        position.x = game.size.x / 2 + sin(game.currentTime() * 1.5) * 150;
     }
   }
 
@@ -98,15 +95,12 @@ class BossMonster extends SpriteAnimationComponent with HasGameReference<MyGame>
     Vector2 direction;
     double speed;
     if (health > 50) {
-      // Phase 1: Bắn thẳng
       direction = Vector2(0, 1);
       speed = 350;
     } else if (health > 20) {
-      // Phase 2: Bắn đuổi chậm
       direction = (game.player.position - position).normalized();
-      speed = 120; 
+      speed = 200;
     } else {
-      // Phase 3 (Mới): Bắn đuổi RẤT NHANH
       direction = (game.player.position - position).normalized();
       speed = 400;
     }
@@ -138,10 +132,7 @@ class BossMonster extends SpriteAnimationComponent with HasGameReference<MyGame>
         
         Future.delayed(const Duration(seconds: 5), () {
           if (!isMounted) return;
-          // _isTransitioning = false; // Removed
-          // _isEnraged = true; // Removed
           _fireTimer.limit = 0.6;
-          // _enragedCycleTimer.start(); // Removed
           add(MoveToEffect(_originalPosition, EffectController(duration: 1.0)));
         });
       }
@@ -152,21 +143,32 @@ class BossMonster extends SpriteAnimationComponent with HasGameReference<MyGame>
     final alarm = RectangleComponent(
       size: game.size,
       paint: Paint()..color = Colors.red.withOpacity(0.2),
-      priority: 100,
+      priority: 99,
     );
     game.add(alarm);
     alarm.add(OpacityEffect.to(0.0, EffectController(duration: 0.5, reverseDuration: 0.5, repeatCount: 5), onComplete: () => alarm.removeFromParent()));
   }
 
-  // void _performEnragedSequence() {} // Removed
-
   void takeDamage({int amount = 1}) {
     if (_isTransitioning || _isMidPhaseTransitioning) return;
 
     health -= amount;
-    _dropCoins(2);
-    if (amount == 1) _hitCount++;
-    if (_hitCount >= 10) { _hitCount = 0; _dropRandomPickup(); }
+
+    // Coin and pickup drop logic
+    if (amount == 1) { // Assuming player bullets have amount = 1
+      _hitCount++;
+      _hitsForCoin++;
+    }
+
+    if (_hitsForCoin >= 3) {
+      _dropCoins(1); // Drops 1 coin
+      _hitsForCoin = 0;
+    }
+    
+    if (_hitCount >= 10) { 
+      _hitCount = 0; 
+      _dropRandomPickup(); 
+    }
     
     _healthBarFill.size.x = (health / 100).clamp(0, 1) * _healthBarWidth;
     
@@ -179,10 +181,6 @@ class BossMonster extends SpriteAnimationComponent with HasGameReference<MyGame>
     if (health <= 50 && !_hasTriggeredMidPhase) {
       _startMidPhaseTransition();
     } 
-    // Logic Enraged cũ đã bị xóa
-    // else if (health <= 20 && !_isEnraged && !_isTransitioning) {
-    //   _startEnragedTransition(); 
-    // }
 
     if (health <= 0) {
       game.bossDefeated();
@@ -203,7 +201,8 @@ class BossMonster extends SpriteAnimationComponent with HasGameReference<MyGame>
 
   void _dropCoins(int count) {
     for (int i = 0; i < count; i++) {
-      game.add(Coin(value: 1, position: position.clone()));
+      // Boss drops coins of value 3.
+      game.add(Coin(value: 3, position: position.clone()));
     }
   }
 
