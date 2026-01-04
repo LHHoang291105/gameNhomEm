@@ -477,26 +477,14 @@ class MyGame extends FlameGame
     _background?.removeFromParent();
     _background = null;
 
-    // 4. Xóa tất cả các thực thể trong game (Quái, đạn, hiệu ứng, item...)
-    children.where((c) =>
-      c is Asteroid ||
-      c is Monster ||
-      c is BossMonster ||
-      c is Bubble ||
-      c is RedDust ||
-      c is Pickup ||
-      c is MonsterLaser ||
-      c is Laser ||
-      c is RedLaser ||
-      c is Explosion ||
-      c is Coin ||
-      c is BombExplosion ||
-      c is Star || // Xóa cả sao nền
-      (c is RectangleComponent && c.priority == 100) // Xóa các hiệu ứng cảnh báo đỏ
+    // 4. Xóa tất cả các thực thể trong game (Quái, đạn, hiệu ứng, item, Player...)
+    // Sử dụng logic loại trừ để đảm bảo xóa hết mọi thứ ngoại trừ các component cốt lõi
+    // Logic này sẽ bao gồm cả Player, Monster, Asteroid, Star, v.v.
+    children.where((c) => 
+      c is! CameraComponent && 
+      c is! AudioManager && 
+      c is! JoystickComponent
     ).forEach((c) => c.removeFromParent());
-
-    // 5. Nếu player chưa bị destroy thì cũng nên ẩn hoặc xóa đi (tuỳ logic, ở đây giữ lại playerState nếu cần nhưng thường game over thì player đã nổ hoặc ẩn)
-    // Tuy nhiên hàm playerDied đã xử lý player nổ rồi.
   }
 
   void _stopAllSpawners() {
@@ -879,6 +867,9 @@ class MyGame extends FlameGame
   }
 
   void restartGame() {
+    // Dọn dẹp toàn bộ game world (bao gồm Player cũ)
+    _cleanUpGameWorld();
+
     if (isOnline) {
       // Reset online game
       _levelTransitioning = false;
@@ -888,7 +879,6 @@ class MyGame extends FlameGame
       _sessionCoins = 0;
       _bossSpawned = false;
 
-      children.where((c) => c is! CameraComponent && c is! AudioManager && c is! JoystickComponent).forEach((c) => c.removeFromParent());
       _createStars();
       startGame();
       resumeEngine();
@@ -901,7 +891,6 @@ class MyGame extends FlameGame
       _sessionCoins = 0;
       _bossSpawned = false;
 
-      children.where((c) => c is! CameraComponent && c is! AudioManager && c is! JoystickComponent).forEach((c) => c.removeFromParent());
       _createStars();
       startOffline(); // Re-initialize offline settings
       startGame();
@@ -913,10 +902,17 @@ class MyGame extends FlameGame
     if (isOnline) {
       updatePlayerData();
     }
-    children
-        .where((c) =>
-            c is! CameraComponent && c is! AudioManager && c is! Star && c is! JoystickComponent)
-        .forEach((c) => c.removeFromParent());
+
+    // Dọn dẹp toàn bộ game world trước khi thoát
+    _cleanUpGameWorld();
+
+    // Remove joystick hoàn toàn khi thoát ra menu
+    // Để đảm bảo không còn hiện trên màn hình title và reset trạng thái khi chơi lại
+    if (_joystickInitialized) {
+      joystick.removeFromParent();
+      _joystickInitialized = false;
+    }
+
     if (children.whereType<Star>().isEmpty) _createStars();
     showMainMenu();
     resumeEngine();
