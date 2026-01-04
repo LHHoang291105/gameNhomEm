@@ -16,12 +16,9 @@ class BossMonster extends SpriteAnimationComponent with HasGameReference<MyGame>
   
   int health = 100;
   int _hitCount = 0;
-  int _hitsForCoin = 0; // Added for coin drop
+  int _hitsForCoin = 0;
   bool _isMovingToCenter = true;
   bool _isTransitioning = false; 
-  bool _isMidPhaseTransitioning = false;
-  bool _hasTriggeredMidPhase = false;
-  bool _canShoot = true;
   
   final Vector2 _originalPosition = Vector2.zero();
   late RectangleComponent _healthBarFill;
@@ -29,6 +26,7 @@ class BossMonster extends SpriteAnimationComponent with HasGameReference<MyGame>
 
   BossMonster({required super.position}) 
       : super(size: Vector2.all(200), anchor: Anchor.center, priority: 1);
+
   @override
   FutureOr<void> onLoad() async {
     final sprites = [
@@ -83,85 +81,61 @@ class BossMonster extends SpriteAnimationComponent with HasGameReference<MyGame>
   @override
   void update(double dt) {
     super.update(dt);
-    if (!_isMovingToCenter && !_isMidPhaseTransitioning) {
+    if (!_isMovingToCenter) {
         _fireTimer.update(dt);
         position.x = game.size.x / 2 + sin(game.currentTime() * 1.5) * 150;
     }
   }
 
   void _decideFireLogic() {
-    if (!isMounted || _isMidPhaseTransitioning) return;
+    if (!isMounted) return;
     
-    Vector2 direction;
-    double speed;
     if (health > 50) {
-      direction = Vector2(0, 1);
-      speed = 350;
+      _fireTimer.limit = 0.8;
+      final leftLaser = RedLaser(
+        position: position.clone() + Vector2(-50, 100),
+        direction: Vector2(0, 1),
+        speed: 350,
+      );
+      final rightLaser = RedLaser(
+        position: position.clone() + Vector2(50, 100),
+        direction: Vector2(0, 1),
+        speed: 350,
+      );
+      game.add(leftLaser);
+      game.add(rightLaser);
     } else if (health > 20) {
-      direction = (game.player.position - position).normalized();
-      speed = 200;
+      _fireTimer.limit = 0.4; // Tăng tần suất bắn
+      final laser = RedLaser(
+        position: position.clone()..y += 160,
+        direction: (game.player.position - position).normalized(),
+        speed: 150, // Đạn đi chậm
+      );
+      game.add(laser);
     } else {
-      direction = (game.player.position - position).normalized();
-      speed = 400;
+      _fireTimer.limit = 0.6; // Trả lại tần suất cũ
+      final laser = RedLaser(
+        position: position.clone()..y += 160,
+        direction: (game.player.position - position).normalized(),
+        speed: 300, // Đạn đi nhanh
+      );
+      game.add(laser);
     }
-    
-    game.add(RedLaser(position: position.clone()..y += 160, direction: direction, speed: speed));
   }
 
-  void _startMidPhaseTransition() {
-    _hasTriggeredMidPhase = true;
-    _isMidPhaseTransitioning = true;
-    _canShoot = false;
-    
-    Future.delayed(const Duration(seconds: 5), () {
-      if (!isMounted) return;
-      _isMidPhaseTransitioning = false;
-      _canShoot = true;
-    });
-  }
-
-  void _startEnragedTransition() {
-    _isTransitioning = true;
-    _canShoot = false;
-    
-    add(MoveToEffect(
-      Vector2(game.size.x / 2, game.size.y / 2),
-      EffectController(duration: 1.5, curve: Curves.easeInOut),
-      onComplete: () {
-        _triggerAlarmEffect();
-        
-        Future.delayed(const Duration(seconds: 5), () {
-          if (!isMounted) return;
-          _fireTimer.limit = 0.6;
-          add(MoveToEffect(_originalPosition, EffectController(duration: 1.0)));
-        });
-      }
-    ));
-  }
-
-  void _triggerAlarmEffect() {
-    final alarm = RectangleComponent(
-      size: game.size,
-      paint: Paint()..color = Colors.red.withOpacity(0.2),
-      priority: 99,
-    );
-    game.add(alarm);
-    alarm.add(OpacityEffect.to(0.0, EffectController(duration: 0.5, reverseDuration: 0.5, repeatCount: 5), onComplete: () => alarm.removeFromParent()));
-  }
 
   void takeDamage({int amount = 1}) {
-    if (_isTransitioning || _isMidPhaseTransitioning) return;
+    if (_isTransitioning) return;
 
     health -= amount;
 
-    // Coin and pickup drop logic
-    if (amount == 1) { // Assuming player bullets have amount = 1
+    if (amount == 1) {
       _hitCount++;
       _hitsForCoin++;
     }
 
     if (_hitsForCoin >= 3) {
-      _dropCoins(1); // Drops 1 coin
+      _dropCoins(1);
       _hitsForCoin = 0;
     }
     
@@ -172,16 +146,16 @@ class BossMonster extends SpriteAnimationComponent with HasGameReference<MyGame>
     
     _healthBarFill.size.x = (health / 100).clamp(0, 1) * _healthBarWidth;
     
+    if (health <= 50) {
+       _healthBarFill.paint.color = Colors.orange;
+    }
+
     if (health <= 20) {
       _healthBarFill.paint.color = Colors.red;
     }
 
     add(ColorEffect(const Color(0xFFFF0000), EffectController(duration: 0.1, reverseDuration: 0.1)));
     
-    if (health <= 50 && !_hasTriggeredMidPhase) {
-      _startMidPhaseTransition();
-    } 
-
     if (health <= 0) {
       game.bossDefeated();
       removeFromParent();
@@ -201,7 +175,6 @@ class BossMonster extends SpriteAnimationComponent with HasGameReference<MyGame>
 
   void _dropCoins(int count) {
     for (int i = 0; i < count; i++) {
-      // Boss drops coins of value 3.
       game.add(Coin(value: 3, position: position.clone()));
     }
   }
